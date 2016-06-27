@@ -1,6 +1,0 @@
-# compiled python files
-*.pyc
-
-# text editor backups
-*.py~
-*.swp
