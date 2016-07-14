@@ -1,4 +1,29 @@
 # -*- coding: utf-8 -*-
+
+# Zumo Simulator - Controller and simulator for Pololu Zumo 32u4 robot
+# Changes from forked project are copyright (C) 2016 Justin D. Clarke
+#
+#
+# Forked from:
+#    https://github.com/nmccrea/sobot-rimulator
+#    Sobot Rimulator - A Robot Programming Tool
+#    Copyright (C) 2013-2014 Nicholas S. D. McCrea
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Email robolity@gmail.com for questions, comments, or to report bugs.
+
 from math import pi
 from time import time
 
@@ -26,18 +51,48 @@ LS_DIALOG_RESPONSE_ACCEPT = 2
 
 #***********************************************************
 class Viewer(object):
+    """Creates the GTK 2.0 gui for the simulator.
+
+    Attributes:
+        world -> World object
+        period -> float
+        map_type -> boolean
+        current_frame -> Frame object
+        pixels_per_meter -> int
+        view_width_pixels -> int
+        view_height_pixels -> int
+        window -> GTK window object
+        drawing_area -> GTK drawing area object
+        painter -> Painter object
+        draw_invisibles -> boolean
+        alert_box -> GTK label object
+
+    Methods:
+        __init__(world, period, zoom, map_type)
+        initialise_viewer()
+        new_frame()
+        draw_frame()
+        step_sim()
+        """
     def __init__(self, world, period, zoom, map_type):
+        """"Generates the gui of the simulation.
+
+        Params:
+            world -> World object
+            period -> float
+            zoom -> int
+            map_type -> boolean
+        """
         # bind the world and it's parameters
         self.world = world
         self.period = period
-        self.zoom = zoom
         self.map_type = map_type
 
         # initialize frame
         self.current_frame = Frame()
 
         # initialize camera parameters
-        self.pixels_per_meter = self.zoom
+        self.pixels_per_meter = zoom
         self.view_width_pixels = int(self.world.width * self.pixels_per_meter)
         self.view_height_pixels = int(self.world.height * self.pixels_per_meter)
 
@@ -59,87 +114,87 @@ class Viewer(object):
         # == initialize the buttons
 
         # build the play button
-        self.button_play = gtk.Button('Play')
+        self._button_play = gtk.Button('Play')
         play_image = gtk.Image()
         play_image.set_from_stock(gtk.STOCK_MEDIA_PLAY, gtk.ICON_SIZE_BUTTON)
-        self.button_play.set_image(play_image)
-        self.button_play.set_image_position(gtk.POS_LEFT)
-        self.button_play.connect('clicked', self.on_play)
+        self._button_play.set_image(play_image)
+        self._button_play.set_image_position(gtk.POS_LEFT)
+        self._button_play.connect('clicked', self.on_play)
 
-        # build the stop button
-        self.button_stop = gtk.Button('Stop')
-        stop_image = gtk.Image()
-        stop_image.set_from_stock(gtk.STOCK_MEDIA_STOP, gtk.ICON_SIZE_BUTTON)
-        self.button_stop.set_image(stop_image)
-        self.button_stop.set_image_position(gtk.POS_LEFT)
-        self.button_stop.connect('clicked', self.on_stop)
+        # build the pause button
+        self._button_pause = gtk.Button('Pause')
+        pause_image = gtk.Image()
+        pause_image.set_from_stock(gtk.STOCK_MEDIA_STOP, gtk.ICON_SIZE_BUTTON)
+        self._button_pause.set_image(pause_image)
+        self._button_pause.set_image_position(gtk.POS_LEFT)
+        self._button_pause.connect('clicked', self.on_pause)
 
         # build the step button
-        self.button_step = gtk.Button('Step')
+        self._button_step = gtk.Button('Step')
         step_image = gtk.Image()
         step_image.set_from_stock(gtk.STOCK_MEDIA_NEXT, gtk.ICON_SIZE_BUTTON)
-        self.button_step.set_image(step_image)
-        self.button_step.set_image_position(gtk.POS_LEFT)
-        self.button_step.connect('clicked', self.on_step)
+        self._button_step.set_image(step_image)
+        self._button_step.set_image_position(gtk.POS_LEFT)
+        self._button_step.connect('clicked', self.on_step)
 
         # build the reset button
-        self.button_reset = gtk.Button('Reset')
+        self._button_reset = gtk.Button('Reset')
         reset_image = gtk.Image()
         reset_image.set_from_stock(gtk.STOCK_MEDIA_REWIND, gtk.ICON_SIZE_BUTTON)
-        self.button_reset.set_image(reset_image)
-        self.button_reset.set_image_position(gtk.POS_LEFT)
-        self.button_reset.connect('clicked', self.on_reset)
+        self._button_reset.set_image(reset_image)
+        self._button_reset.set_image_position(gtk.POS_LEFT)
+        self._button_reset.connect('clicked', self.on_reset)
 
         # build the save map button
-        self.button_save_map = gtk.Button('Save Map')
+        self._button_save_map = gtk.Button('Save Map')
         save_map_image = gtk.Image()
         save_map_image.set_from_stock(gtk.STOCK_SAVE, gtk.ICON_SIZE_BUTTON)
-        self.button_save_map.set_image(save_map_image)
-        self.button_save_map.set_image_position(gtk.POS_LEFT)
-        self.button_save_map.connect('clicked', self.on_save_map)
+        self._button_save_map.set_image(save_map_image)
+        self._button_save_map.set_image_position(gtk.POS_LEFT)
+        self._button_save_map.connect('clicked', self.on_save_map)
 
         # build the load map button
-        self.button_load_map = gtk.Button('Load Map')
+        self._button_load_map = gtk.Button('Load Map')
         load_map_image = gtk.Image()
         load_map_image.set_from_stock(gtk.STOCK_OPEN, gtk.ICON_SIZE_BUTTON)
-        self.button_load_map.set_image(load_map_image)
-        self.button_load_map.set_image_position(gtk.POS_LEFT)
-        self.button_load_map.connect('clicked', self.on_load_map)
+        self._button_load_map.set_image(load_map_image)
+        self._button_load_map.set_image_position(gtk.POS_LEFT)
+        self._button_load_map.connect('clicked', self.on_load_map)
 
         # build the random map buttons
-        self.button_random_map = gtk.Button('Random Map')
+        self._button_random_map = gtk.Button('Random Map')
         random_map_image = gtk.Image()
         random_map_image.set_from_stock(gtk.STOCK_REFRESH, gtk.ICON_SIZE_BUTTON)
-        self.button_random_map.set_image(random_map_image)
-        self.button_random_map.set_image_position(gtk.POS_LEFT)
-        self.button_random_map.connect('clicked', self.on_random_map)
+        self._button_random_map.set_image(random_map_image)
+        self._button_random_map.set_image_position(gtk.POS_LEFT)
+        self._button_random_map.connect('clicked', self.on_random_map)
 
         # build the draw-invisibles toggle button
         self.draw_invisibles = False  # controls whether invisible world
                                       #    elements are displayed
-        self.button_draw_invisibles = gtk.Button()
+        self._button_draw_invisibles = gtk.Button()
         self._decorate_draw_invisibles_button_inactive()
-        self.button_draw_invisibles.set_image_position(gtk.POS_LEFT)
-        self.button_draw_invisibles.connect('clicked', self.on_draw_invisibles)
+        self._button_draw_invisibles.set_image_position(gtk.POS_LEFT)
+        self._button_draw_invisibles.connect('clicked', self.on_draw_invisibles)
 
         # == lay out the window
 
         # pack the simulation control buttons
         sim_controls_box = gtk.HBox(spacing=5)
-        sim_controls_box.pack_start(self.button_play, False, False)
-        sim_controls_box.pack_start(self.button_stop, False, False)
-        sim_controls_box.pack_start(self.button_step, False, False)
-        sim_controls_box.pack_start(self.button_reset, False, False)
+        sim_controls_box.pack_start(self._button_play, False, False)
+        sim_controls_box.pack_start(self._button_pause, False, False)
+        sim_controls_box.pack_start(self._button_step, False, False)
+        sim_controls_box.pack_start(self._button_reset, False, False)
 
         # pack the map control buttons
         map_controls_box = gtk.HBox(spacing=5)
-        map_controls_box.pack_start(self.button_save_map, False, False)
-        map_controls_box.pack_start(self.button_load_map, False, False)
-        map_controls_box.pack_start(self.button_random_map, False, False)
+        map_controls_box.pack_start(self._button_save_map, False, False)
+        map_controls_box.pack_start(self._button_load_map, False, False)
+        map_controls_box.pack_start(self._button_random_map, False, False)
 
         # pack the invisibles button
         invisibles_button_box = gtk.HBox()
-        invisibles_button_box.pack_start(self.button_draw_invisibles, False,
+        invisibles_button_box.pack_start(self._button_draw_invisibles, False,
             False)
 
         # align the controls
@@ -170,52 +225,59 @@ class Viewer(object):
         self.window.show_all()
 
     def initialise_viewer(self):
-
-        # timing control
-        # self.dt = self.world.dt  # seconds
-
+        """Initialises the world in the viewer and starts the gui."""
         # gtk simulation event source - for simulation control
         self.sim_event_source = gobject.idle_add(self.world.initialise_world,
             self.map_type)  # we use this opportunity to initialize the world
 
         # set intial state of buttons
-        self.control_panel_state_init()
+        self._control_panel_state_init()
 
         # start gtk
         gtk.main()
 
     def new_frame(self):
+        """Creates a new gui frame."""
         self.current_frame = Frame()
 
     def draw_frame(self):
+        """Draws the gui frame to the screen."""
         self.drawing_area.queue_draw_area(0, 0, self.view_width_pixels,
             self.view_height_pixels)
 
-    def control_panel_state_init(self):
+    def _control_panel_state_init(self):
+        """Sets the initial gui button states."""
         self.alert_box.set_text('')
-        self.button_play.set_sensitive(True)
-        self.button_stop.set_sensitive(False)
-        self.button_step.set_sensitive(True)
-        self.button_reset.set_sensitive(False)
+        self._button_play.set_sensitive(True)
+        self._button_pause.set_sensitive(False)
+        self._button_step.set_sensitive(True)
+        self._button_reset.set_sensitive(False)
 
-    def control_panel_state_playing(self):
-        self.button_play.set_sensitive(False)
-        self.button_stop.set_sensitive(True)
-        self.button_reset.set_sensitive(True)
+    def _control_panel_state_playing(self):
+        """Sets button states if playing simulation."""
+        self._button_play.set_sensitive(False)
+        self._button_pause.set_sensitive(True)
+        self._button_reset.set_sensitive(True)
 
-    def control_panel_state_paused(self):
-        self.button_play.set_sensitive(True)
-        self.button_stop.set_sensitive(False)
-        self.button_reset.set_sensitive(True)
+    def _control_panel_state_paused(self):
+        """Sets button states if simulation is paused."""
+        self._button_play.set_sensitive(True)
+        self._button_pause.set_sensitive(False)
+        self._button_reset.set_sensitive(True)
 
-    def control_panel_state_finished(self, alert_text):
+    def _control_panel_state_finished(self, alert_text):
+        """Sets button states if simulation is finished.
+
+        Params:
+            alert_text -> GTK object
+        """
         self.alert_box.set_text(alert_text)
-        self.button_play.set_sensitive(False)
-        self.button_stop.set_sensitive(False)
-        self.button_step.set_sensitive(False)
+        self._button_play.set_sensitive(False)
+        self._button_pause.set_sensitive(False)
+        self._button_step.set_sensitive(False)
 
-    def _step_sim(self):
-        # increment the simulation
+    def step_sim(self):
+        """Increment the simulation one time period."""
         try:
             self.world.prev_time = time()
             self.world.step()
@@ -228,40 +290,51 @@ class Viewer(object):
         self.world.draw_world()
 
     def _run_sim(self):
-        # loop this function to continually step through the simulation
+        """Continuously loops through the simulation by repeatedly stepping."""
         self.sim_event_source = gobject.timeout_add(int(self.period * 1000),
             self._run_sim)
-        self._step_sim()
+        self.step_sim()
 
     def end_sim(self, alert_text=''):
+        """Ends simulation if exception met and stops physical robots
+
+        Params:
+            alert_text -> GTK object
+        """
         self.world.stop_robots()
         gobject.source_remove(self.sim_event_source)
-        self.control_panel_state_finished(alert_text)
+        self._control_panel_state_finished(alert_text)
 
   # EVENT HANDLERS:
     def on_play(self, widget):
-        # this ensures multiple calls to play_sim do not speed up the simulator
+        """Starts the simulation when the play button is pressed."""
+        # this ensures multiple calls to play_sim do not speed up
+        #    the simulator
         gobject.source_remove(self.sim_event_source)
         self._run_sim()
-        self.control_panel_state_playing()
+        self._control_panel_state_playing()
 
-    def on_stop(self, widget):
+    def on_pause(self, widget):
+        """Pause the simulation when the pause button is pressed."""
         self.world.stop_robots()
         gobject.source_remove(self.sim_event_source)
-        self.control_panel_state_paused()
+        self._control_panel_state_paused()
 
     def on_step(self, widget):
+        """Simulation steps one time period when the step button is pressed."""
         gobject.source_remove(self.sim_event_source)
-        self.control_panel_state_paused()
-        self._step_sim()
+        self._control_panel_state_paused()
+        self.step_sim()
 
     def on_reset(self, widget):
+        """The simulation world, robots and supervisors are reset."""
         gobject.source_remove(self.sim_event_source)
-        self.control_panel_state_init()
+        self._control_panel_state_init()
         # reset the world in the viewer
         self.world.initialise_world()
 
     def on_save_map(self, widget):
+        """Saves the obstacle, goal and robot positions to an external file."""
         # create the file chooser
         file_chooser = gtk.FileChooserDialog(
             title='Save Map',
@@ -283,6 +356,7 @@ class Viewer(object):
             file_chooser.destroy()
 
     def on_load_map(self, widget):
+        """Load the obstacle, goal and robot positions from an external file."""
         # create the file chooser
         file_chooser = gtk.FileChooserDialog(
             title='Load Map',
@@ -304,10 +378,20 @@ class Viewer(object):
             file_chooser.destroy()
 
     def on_random_map(self, widget):
+        """Generates a random map for the simulation world.
+
+        A new world is generated with a random positioning and number
+        of obstacles, a randomly placed goal, and the robot in the centre
+        of the world."""
         gobject.source_remove(self.sim_event_source)
         self.world.initialise_world(True)
 
     def on_draw_invisibles(self, widget):
+        """Display on running simulation robot heading and sensors.
+
+        Draws the robot proximity sensors and distance to obstacles,
+        robot heading and the path already travelled by the robot in
+        the current simulation."""
         # toggle the draw_invisibles state
         self.draw_invisibles = not self.draw_invisibles
         if self.draw_invisibles:
@@ -317,9 +401,11 @@ class Viewer(object):
         self.world.draw_world()
 
     def on_expose(self, widget, event):
+        """Exposes the object to the viewer."""
         self.painter.draw_frame(self.current_frame)
 
     def on_delete(self, widget, event):
+        """Deletes the viewer and quits the gtk object."""
         gtk.main_quit()
         return False
 
@@ -327,21 +413,33 @@ class Viewer(object):
         draw_invisibles_image = gtk.Image()
         draw_invisibles_image.set_from_stock(gtk.STOCK_REMOVE,
             gtk.ICON_SIZE_BUTTON)
-        self.button_draw_invisibles.set_image(draw_invisibles_image)
-        self.button_draw_invisibles.set_label('Hide Invisibles')
+        self._button_draw_invisibles.set_image(draw_invisibles_image)
+        self._button_draw_invisibles.set_label('Hide Invisibles')
 
     def _decorate_draw_invisibles_button_inactive(self):
         draw_invisibles_image = gtk.Image()
         draw_invisibles_image.set_from_stock(gtk.STOCK_ADD,
             gtk.ICON_SIZE_BUTTON)
-        self.button_draw_invisibles.set_image(draw_invisibles_image)
-        self.button_draw_invisibles.set_label('Show Invisibles')
+        self._button_draw_invisibles.set_image(draw_invisibles_image)
+        self._button_draw_invisibles.set_label('Show Invisibles')
 
 
 #***********************************************************
 class Frame(object):
+    """Class to create shapes to be drawn into the Viewer object.
+
+    Attributes:
+        draw_list -> list
+
+    Methods:
+        __init__()
+        add_circle(pos, radius, color, [alpha])
+        add_polygons(polygons, color, [alpha])
+        add_lines(lines, linewidth, color, [alpha])
+    """
 
     def __init__(self):
+        """Initialises the list of drawn objects in the frame."""
         self.draw_list = []
 
     def add_circle(self, pos, radius, color, alpha=None):
@@ -373,6 +471,21 @@ class Frame(object):
 
 #************************************************************
 class Painter(object):
+    """Class to draw Frame objects into the Viewer object.
+
+    Attributes:
+        draw_list -> list
+        drawing_area
+        pixels_per_meter
+
+    Methods:
+        __init__(drawing_area, pixels_per_meter)
+        draw_frame(frame)
+        draw_circle(pos, radius, color, [alpha])
+        draw_polygons(polygons, color, [alpha])
+        draw_lines(lines, linewidth, color, [alpha])
+        set_color(cairo_context, color_string, alpha)
+    """
 
     def __init__(self, drawing_area, pixels_per_meter):
         self.drawing_area = drawing_area
@@ -452,9 +565,17 @@ class Painter(object):
 
 #*************************************************************
 class ColorPalette(object):
+    """Class to set color for Painter objects.
 
+    Attributes:
+        none
+
+    Methods:
+        dab(cls, cairo_context, color_string, alpha)
+    """
     @classmethod
     def dab(cls, cairo_context, color_string, alpha):
+        """Returns requested color and alpha values."""
         vals = [c / 255.0 for c in color_table[color_string]]
         if alpha:
             cairo_context.set_source_rgba(vals[0], vals[1], vals[2], alpha)

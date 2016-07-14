@@ -1,5 +1,29 @@
 # -*- coding: utf-8 -*-
 
+# Zumo Simulator - Controller and simulator for Pololu Zumo 32u4 robot
+# Changes from forked project are copyright (C) 2016 Justin D. Clarke
+#
+#
+# Forked from:
+#    https://github.com/nmccrea/sobot-rimulator
+#    Sobot Rimulator - A Robot Programming Tool
+#    Copyright (C) 2013-2014 Nicholas S. D. McCrea
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Email robolity@gmail.com for questions, comments, or to report bugs.
+
 from math import radians, log, pi, sin, cos
 
 
@@ -31,7 +55,29 @@ linalg = LinearAlgebra()
 R_TRANS_VEL_LIMIT = 0.3148     # m/s
 R_ANG_VEL_LIMIT = 2.2763       # rad/s
 
+#PID values
+gtg_kP = 5.0
+gtg_kI = 0.0
+gtg_kD = 0.0
 
+ao_kP = 10.0
+ao_kI = 0.0
+ao_kD = 0.0
+
+fw_kP = 10.0
+fw_kI = 0.0
+fw_kD = 0.0
+
+gta_kP = 5.0
+gta_kI = 0.0
+gta_kD = 0.0
+
+gtgao_kP = 10.0
+gtgao_kI = 0.0
+gtgao_kD = 0.0
+
+
+#**********************************************************
 class Supervisor(object):
 
     def __init__(self,
@@ -72,12 +118,16 @@ class Supervisor(object):
 
         # controllers
         controller_interface = SupervisorControllerInterface(self)
-        self.go_to_angle_controller = GoToAngleController(controller_interface)
-        self.go_to_goal_controller = GoToGoalController(controller_interface)
+        self.go_to_angle_controller = GoToAngleController(controller_interface,
+            gta_kP, gta_kI, gta_kD)
+        self.go_to_goal_controller = GoToGoalController(controller_interface,
+             gtg_kP, gtg_kI, gtg_kD)
         self.avoid_obstacles_controller = (
-            AvoidObstaclesController(controller_interface))
-        self.gtg_and_ao_controller = GTGAndAOController(controller_interface)
-        self.follow_wall_controller = FollowWallController(controller_interface)
+            AvoidObstaclesController(controller_interface, ao_kP, ao_kI, ao_kD))
+        self.gtg_and_ao_controller = GTGAndAOController(controller_interface,
+             gtgao_kP, gtgao_kI, gtgao_kD)
+        self.follow_wall_controller = FollowWallController(controller_interface,
+             fw_kP, fw_kI, fw_kD)
 
         # state machine
         self.state_machine = SupervisorStateMachine(self)

@@ -1,4 +1,29 @@
 # -*- coding: utf-8 -*-import time
+
+# Zumo Simulator - Controller and simulator for Pololu Zumo 32u4 robot
+# Changes from forked project are copyright (C) 2016 Justin D. Clarke
+#
+#
+# Forked from:
+#    https://github.com/nmccrea/sobot-rimulator
+#    Sobot Rimulator - A Robot Programming Tool
+#    Copyright (C) 2013-2014 Nicholas S. D. McCrea
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Email robolity@gmail.com for questions, comments, or to report bugs.
+
 import serial
 import serial.tools.list_ports
 import threading
@@ -13,6 +38,8 @@ from supervisor import Supervisor, SupervisorView, RobotSupervisorInterface
 
 #Robot
 #RobotView
+#RobotPhysicalInterface
+#RobotComm
 #Sensor
 #ProximitySensor
 #ProximitySensorView
@@ -27,13 +54,13 @@ linalg = LinearAlgebra()
 #*************************************************
 
 debug = True
-use_serial = True
+use_serial = False
 
 # Robot's Physical Properties
 R_WHEEL_RADIUS = 0.0194        # meters
 R_WHEEL_BASE_LENGTH = 0.0885   # meters
 R_WHEEL_TICKS_PER_REV = 909.7
-R_MAX_WHEEL_DRIVE_RATE = 200  # rpm
+R_MAX_WHEEL_DRIVE_RATE = 100  # rpm
 
 # Robot's Physical Dimensions
 R_BOTTOM_PLATE = ([[-0.024, 0.064],
@@ -92,7 +119,7 @@ class Robot(object):  # Robot
         # drive rates
         self.max_speed = R_MAX_WHEEL_DRIVE_RATE * ((2 * pi) / 60)  # rpm 2 rad/s
         self.trans_vel_limit = self.max_speed * self.wheel_radius  # m/s
-        self.ang_vel_limit = 0.05 * self.max_speed                 # rad/s
+        self.ang_vel_limit = 0.2 * self.max_speed                 # rad/s
 
         if debug:
             print("SPEED{:.3f}m/s").format(self.trans_vel_limit)
@@ -678,6 +705,6 @@ class DifferentialDriveDynamics(object):
 
         # update the state of the moving parts
         pose.supdate(new_x, new_y, new_theta)
-        print(new_y)
+        # print("New y: {}").format(new_y)
         wheel_encoders[0].step_revolutions(revolutions_left)
         wheel_encoders[1].step_revolutions(revolutions_right)
