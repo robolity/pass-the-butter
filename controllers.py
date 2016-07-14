@@ -19,36 +19,129 @@ from physics import LinearAlgebra
 
 #*************************************************
 
+debug = False
+
 # bring in linear algebra functions
 linalg = LinearAlgebra()
+
+# length of heading vector
+VECTOR_LEN = 0.75 
+
+# wall-following directions
+FWDIR_LEFT = 0
+FWDIR_RIGHT = 1
 
 #************************************************************
 
 
-class GoToGoalController(object):
-
-    def __init__(self, supervisor):
+class Controller(object):
+	"""Parent controller class to bind the generic controller inputs & outputs
+	
+	Attributes:
+		supervisor -> SupervisorControllerInterface
+        kP -> float
+        kI -> float
+        kD -> float
+        prev_time -> float
+        prev_eP -> float
+        prev_eI -> float
+    
+    Methods:
+        __init__(supervisor_interface)
+        update_heading()
+        execute()
+        _print_vars(eP, eI, eD, v, omega)
+    """
+	def __init__(self, supervisor_interface, kP, kI, kD):
+        """Bind the supervisor interface and initialise the controller variables
+        
+        Keywords:
+            supervisor_interface -> SupervisorControllerInterface
+        """
         # bind the supervisor
         self.supervisor = supervisor
 
-        # gains
-        self.kP = 5.0
-        self.kI = 0.0
-        self.kD = 0.0
+        # bind the gains
+        self.kP = kP
+        self.kI = kI
+        self.kD = kD
 
         # stored values - for computing next results
         self.prev_time = 0.0
         self.prev_eP = 0.0
         self.prev_eI = 0.0
 
+    def update_heading(self):
+        """Generate and store new heading vector"""
+        pass
+
+    def execute(self):
+        """Calculate PID terms and generate the supervisor's v and omega"""
+        pass
+
+    def _print_vars(self, eP, eI, eD, v, omega):
+        """Prints out the PID errors, control components and outputs"""
+        print "\n\n"
+        print "=============="
+        print "ERRORS:"
+        print "eP: " + str(eP)
+        print "eI: " + str(eI)
+        print "eD: " + str(eD)
+        print ""
+        print "CONTROL COMPONENTS:"
+        print "kP * eP = " + str(self.kP) + " * " + str(eP)
+        print "= " + str(self.kP * eP)
+        print "kI * eI = " + str(self.kI) + " * " + str(eI)
+        print "= " + str(self.kI * eI)
+        print "kD * eD = " + str(self.kD) + " * " + str(eD)
+        print "= " + str(self.kD * eD)
+        print ""
+        print "OUTPUTS:"
+        print "omega: " + str(omega)
+        print "v    : " + str(v)
+
+
+#************************************************************		
+class GoToGoalController(Controller):
+    """PID controller to direct robot towards the goal location
+    
+    Attributes:
+        kP -> float
+        kI -> float
+        kD -> float
+        prev_time -> float
+        prev_eP -> float
+        prev_eI -> float
+        gtg_heading_vector -> 2-dim array
+    
+    Methods:
+        __init__(supervisor)
+        update_heading()
+        execute()
+        calculate_gtg_heading_vector()
+        _print_vars(eP, eI, eD, v, omega)
+    """
+    def __init__(self, supervisor_interface, kP, kI, kD):
+        """Bind the supervisor interface and initialise the controller variables
+        
+        Keywords:
+            supervisor_interface -> SupervisorControllerInterface
+			kP -> float
+			kI -> float
+			kD -> float
+        """
+		super(GoToGoalController, self).__init__(supervisor_interface, 
+			kP, kI, kD)
+		
         # key vectors and data (initialize to any non-zero vector)
         self.gtg_heading_vector = [1.0, 0.0]
 
     def update_heading(self):
-        # generate and store new heading vector
+        """Generate and store new heading vector"""
         self.gtg_heading_vector = self.calculate_gtg_heading_vector()
 
     def execute(self):
+        """Calculate PID terms and generate the supervisor's v and omega"""
         # calculate the time that has passed since the last control iteration
         current_time = self.supervisor.time()
         dt = current_time - self.prev_time
@@ -75,10 +168,18 @@ class GoToGoalController(object):
         self.supervisor.set_outputs(v, omega)
 
         # === FOR DEBUGGING ===
-        # self._print_vars(eP, eI, eD, v, omega)
+        if debug:
+			self._print_vars(eP, eI, eD, v, omega)
 
     # return a go-to-goal heading vector in the robot's reference frame
     def calculate_gtg_heading_vector(self):
+        """Calculate and return go to goal heading vector
+        
+		Return a go-to-goal heading vector in the robot's reference frame
+		
+		Returns:
+            goal -> 2-dim array
+        """
         # get the inverse of the robot's pose
         robot_inv_pos, robot_inv_theta = (
             self.supervisor.estimated_pose().inverse().vunpack())
@@ -90,43 +191,33 @@ class GoToGoalController(object):
 
         return goal
 
-    def _print_vars(self, eP, eI, eD, v, omega):
-        print "\n\n"
-        print "=============="
-        print "ERRORS:"
-        print "eP: " + str(eP)
-        print "eI: " + str(eI)
-        print "eD: " + str(eD)
-        print ""
-        print "CONTROL COMPONENTS:"
-        print "kP * eP = " + str(self.kP) + " * " + str(eP)
-        print "= " + str(self.kP * eP)
-        print "kI * eI = " + str(self.kI) + " * " + str(eI)
-        print "= " + str(self.kI * eI)
-        print "kD * eD = " + str(self.kD) + " * " + str(eD)
-        print "= " + str(self.kD * eD)
-        print ""
-        print "OUTPUTS:"
-        print "omega: " + str(omega)
-        print "v    : " + str(v)
-
+		
 #**********************************************************
-
-VECTOR_LEN = 0.75  # length of heading vector
-
-
 class GoToGoalControllerView(object):
-
+    """PID controller to direct robot towards the goal location
+    
+    Attributes:
+        viewer -> Viewer
+        supervisor -> SupervisorControllerInterface
+        go_to_goal_controller -> GoToGoalContoller
+    
+    Methods:
+        draw_go_to_goal_controller_to_frame()
+    """
     def __init__(self, viewer, supervisor):
-        #bind the viewer and supervisor
+        """Bind the viewe, supervisor and controller
+		
+		Keywords:
+			viewer -> Viewer
+			supervisor -> SupervisorControllerInterface
+		"""
         self.viewer = viewer
         self.supervisor = supervisor
 
         self.go_to_goal_controller = supervisor.go_to_goal_controller
 
-    # draw a representation of the go-to-goal controller's internal
-    # state to the frame
     def draw_go_to_goal_controller_to_frame(self):
+        """Draw go-to-goal controller's internal state to the frame"""
         robot_pos, robot_theta = self.supervisor.estimated_pose.vunpack()
 
         # draw the computed go-to-goal vector
@@ -142,11 +233,40 @@ class GoToGoalControllerView(object):
 
 
 #********************************************************
-class AvoidObstaclesController(object):
-
-    def __init__(self, supervisor_interface):
-        # bind the supervisor
-        self.supervisor_interface = supervisor_interface
+class AvoidObstaclesController(Controller):
+    """PID controller to direct robot away from obstacles
+    
+    Attributes:
+        supervisor_interface -> SupervisorControllerInterface
+        proximity_sensor_placements -> list
+        sensor_gains -> list
+        kP -> float
+        kI -> float
+        kD -> float
+        prev_time -> float
+        prev_eP -> float
+        prev_eI -> float
+        obstacle_vectors -> list of 2-dim arrays
+        ao_heading_vector -> 2-dim array
+    
+    Methods:
+        __init__(supervisor)
+        update_heading()
+        execute()
+        calculate_ao_heading_vector()
+        _print_vars(eP, eI, eD, v, omega)
+    """
+    def __init__(self, supervisor_interface, kP, kI, kD):
+        """Bind the supervisor interface and initialise the controller variables
+        
+        Keywords:
+            supervisor_interface -> SupervisorControllerInterface
+			kP -> float
+			kI -> float
+			kD -> float
+        """
+		super(AvoidObstaclesController, self).__init__(supervisor_interface, 
+			kP, kI, kD)
 
         # sensor placements
         self.proximity_sensor_placements = (
@@ -156,29 +276,21 @@ class AvoidObstaclesController(object):
         self.sensor_gains = [1.0 + ((0.4 * abs(p.theta)) / pi)
                              for p in self.proximity_sensor_placements]
 
-        # control gains
-        self.kP = 10.0
-        self.kI = 0.0
-        self.kD = 0.0
-
-        # stored values - for computing next results
-        self.prev_time = 0.0
-        self.prev_eP = 0.0
-        self.prev_eI = 0.0
-
         # key vectors and data (initialize to any non-zero vector)
         self.obstacle_vectors = [[1.0, 0.0]] * (
             len(self.proximity_sensor_placements))
         self.ao_heading_vector = [1.0, 0.0]
 
     def update_heading(self):
-        # generate and store new heading and obstacle vectors
+        """Generate and store new heading and obstacle vectors"""
         self.ao_heading_vector, self.obstacle_vectors = (
             self.calculate_ao_heading_vector())
 
     def execute(self):
+		"""Calculate PID terms and generate the supervisor's v and omega"""
+		
         # calculate the time that has passed since the last control iteration
-        current_time = self.supervisor_interface.time()
+        current_time = self.supervisor.time()
         dt = current_time - self.prev_time
 
         # calculate the error terms
@@ -201,13 +313,23 @@ class AvoidObstaclesController(object):
         self.prev_eI = eI
 
         self.supervisor_interface.set_outputs(v, omega)
-
-        # === FOR DEBUGGING ===
-        # self._print_vars(eP, eI, eD, v, omega)
+		
+		# === FOR DEBUGGING ===
+        if debug:
+			self._print_vars(eP, eI, eD, v, omega)
 
     # return a obstacle avoidance vector in the robot's reference frame
     # also returns vectors to detected obstacles in the robot's reference frame
     def calculate_ao_heading_vector(self):
+		"""Calculate and return avoid obstacle heading vector
+		
+		Returns an obstacle avoidance vector in the robot's reference frame and 
+		returns vectors to detected obstacles in the robot's reference frame
+		
+		Returns: 
+			ao_heading_vector -> 2-dim array
+			obstacle_vectors -> list of 2-dim arrays
+		"""
         # initialize vector
         obstacle_vectors = [[0.0, 0.0]] * len(self.proximity_sensor_placements)
         ao_heading_vector = [0.0, 0.0]
@@ -236,40 +358,36 @@ class AvoidObstaclesController(object):
 
         return ao_heading_vector, obstacle_vectors
 
-    def _print_vars(self, eP, eI, eD, v, omega):
-        print "\n\n"
-        print "=============="
-        print "ERRORS:"
-        print "eP: " + str(eP)
-        print "eI: " + str(eI)
-        print "eD: " + str(eD)
-        print ""
-        print "CONTROL COMPONENTS:"
-        print "kP * eP = " + str(self.kP) + " * " + str(eP)
-        print "= " + str(self.kP * eP)
-        print "kI * eI = " + str(self.kI) + " * " + str(eI)
-        print "= " + str(self.kI * eI)
-        print "kD * eD = " + str(self.kD) + " * " + str(eD)
-        print "= " + str(self.kD * eD)
-        print ""
-        print "OUTPUTS:"
-        print "omega: " + str(omega)
-        print "v    : " + str(v)
 
 #*********************************************************
-VECTOR_LEN = 0.75  # length of heading vector
-
-
 class AvoidObstaclesControllerView(object):
-
+	"""PID controller to direct robot towards the goal location
+    
+    Attributes:
+        viewer -> Viewer
+        supervisor -> SupervisorControllerInterface
+        avoid_obstacles_controller -> AvoidObstaclesController
+    
+    Methods:
+        __init__(viewer, supervisor)
+		draw_avoid_obstacles_controller_to_frame()
+		draw_go_to_goal_controller_to_frame()
+    """
     def __init__(self, viewer, supervisor):
-        self.viewer = viewer
+        """Bind the viewe, supervisor and controller
+		
+		Keywords:
+			viewer -> Viewer
+			supervisor -> SupervisorControllerInterface
+		"""
+		self.viewer = viewer
         self.supervisor = supervisor
         self.avoid_obstacles_controller = supervisor.avoid_obstacles_controller
 
     # draw a representation of the avoid-obstacles controller's internal
     #     state to the frame
     def draw_avoid_obstacles_controller_to_frame(self):
+		"""Draw avoid obstacle controller's internal state to the frame"""
         robot_pos, robot_theta = self.supervisor.estimated_pose.vunpack()
 
         # draw the detected environment boundary (i.e. sensor readings)
@@ -296,17 +414,21 @@ class AvoidObstaclesControllerView(object):
                                              color="red",
                                              alpha=1.0)
 
+
 #****************************************************
-# wall-following directions
-FWDIR_LEFT = 0
-FWDIR_RIGHT = 1
+class FollowWallController(Controller):
 
-
-class FollowWallController(object):
-
-    def __init__(self, supervisor):
-        # bind the supervisor
-        self.supervisor = supervisor
+    def __init__(self, supervisor_interface, kP, kI, kD):
+        """Bind the supervisor interface and initialise the controller variables
+        
+        Keywords:
+            supervisor_interface -> SupervisorControllerInterface
+			kP -> float
+			kI -> float
+			kD -> float
+        """
+		super(FollowWallController, self).__init__(supervisor_interface, 
+			kP, kI, kD)
 
         # sensor placements
         self.proximity_sensor_placements = (
@@ -315,16 +437,6 @@ class FollowWallController(object):
         # wall-follow parameters
         self.follow_distance = 0.15  # meters from the center of the robot
                                      #    to the wall
-
-        # control gains
-        self.kP = 10.0
-        self.kI = 0.0
-        self.kD = 0.0
-
-        # stored values - for computing next results
-        self.prev_time = 0.0
-        self.prev_eP = 0.0
-        self.prev_eI = 0.0
 
         # key vectors and data (initialize to any non-zero vector)
         self.l_wall_surface = [[1.0, 0.0], [1.0, 0.0]]  # the followed surface,
@@ -342,8 +454,11 @@ class FollowWallController(object):
         self.r_fw_heading_vector = [1.0, 0.0]
 
     def update_heading(self):
-        # generate and store new heading vector and critical points for
-        #    following to the left
+        """Calculate and return heading vectors for following left & right"""
+		
+		# generate and store new heading vector and critical points for
+        # 	 following to the left
+		
         [
           self.l_fw_heading_vector,
           self.l_parallel_component,
@@ -351,7 +466,8 @@ class FollowWallController(object):
           self.l_distance_vector,
           self.l_wall_surface
                             ] = self.calculate_fw_heading_vector(FWDIR_LEFT)
-        # generate and store new heading vector and critical points for
+        
+		# generate and store new heading vector and critical points for
         #    following to the right
         [
           self.r_fw_heading_vector,
@@ -362,6 +478,8 @@ class FollowWallController(object):
                             ] = self.calculate_fw_heading_vector(FWDIR_RIGHT)
 
     def execute(self):
+		"""Calculate PID terms and generate the supervisor's v and omega"""
+		
         # determine which direction to slide in
         current_state = self.supervisor.current_state()
         if current_state == 4:
@@ -398,13 +516,25 @@ class FollowWallController(object):
         self.supervisor.set_outputs(v, omega)
 
         # === FOR DEBUGGING ===
-        # self._print_vars(eP, eI, eD, v, omega)
+        if debug:
+			self._print_vars(eP, eI, eD, v, omega)
 
-    # return a wall-following vector in the robot's reference frame
-    # also returns the component vectors used to calculate the heading
-    # and the vectors representing the followed surface in robot-space
+    
     def calculate_fw_heading_vector(self, follow_direction):
-
+		"""Calculate and return follow wall heading vector
+		
+		Return a wall-following vector in the robot's reference frame.
+		Also returns the component vectors used to calculate the heading
+		and the vectors representing the followed surface in robot-space
+		
+		Returns:
+			l_fw_heading_vector
+			l_parallel_component
+			l_perpendicular_component
+			l_distance_vector
+			l_wall_surface
+		"""
+		
         # get the necessary variables for the working set of sensors
         #   the working set is the sensors on the side we are bearing on,
         #   indexed from rearmost to foremost on the robot
@@ -479,37 +609,17 @@ class FollowWallController(object):
         return (l_fw_heading_vector, l_parallel_component,
             l_perpendicular_component, l_distance_vector, l_wall_surface)
 
-    def _print_vars(self, eP, eI, eD, v, omega):
-        print "\n\n"
-        print "=============="
-        print "ERRORS:"
-        print "eP: " + str(eP)
-        print "eI: " + str(eI)
-        print "eD: " + str(eD)
-        print ""
-        print "CONTROL COMPONENTS:"
-        print "kP * eP = " + str(self.kP) + " * " + str(eP)
-        print "= " + str(self.kP * eP)
-        print "kI * eI = " + str(self.kI) + " * " + str(eI)
-        print "= " + str(self.kI * eI)
-        print "kD * eD = " + str(self.kD) + " * " + str(eD)
-        print "= " + str(self.kD * eD)
-        print ""
-        print "OUTPUTS:"
-        print "omega: " + str(omega)
-        print "v    : " + str(v)
 
 #**********************************************************
-VECTOR_LEN = 0.75  # length of heading vector
-
-FWDIR_LEFT = 0
-FWDIR_RIGHT = 1
-
-
 class FollowWallControllerView(object):
 
     def __init__(self, viewer, supervisor):
-        #bind the viewer and supervisor
+        """Bind the viewe, supervisor and controller
+		
+		Keywords:
+			viewer -> Viewer
+			supervisor -> SupervisorControllerInterface
+		"""
         self.viewer = viewer
         self.supervisor = supervisor
         self.follow_wall_controller = supervisor.follow_wall_controller
@@ -517,6 +627,11 @@ class FollowWallControllerView(object):
     # draw a representation of the currently-active side of the follow-wall
     #    controller state to the frame
     def draw_active_follow_wall_controller_to_frame(self):
+		"""Draw follow wall controller's internal state to the frame
+		
+		Draw a representation of the currently-active side of the follow-wall
+        controller state to the frame
+		"""
         # determine which side to renderi
         current_state = self.supervisor.state_machine.current_state
         if current_state == 4:
@@ -527,14 +642,13 @@ class FollowWallControllerView(object):
             raise Exception("applying follow-wall controller when not in a "
                 "sliding state currently not supported")
 
-    # draw a representation of both sides of the follow-wall controller to
-    #    the frame
     def draw_complete_follow_wall_controller_to_frame(self):
+		"""Draw a representation of both sides of the follow-wall controller"""
         self._draw_follow_wall_controller_to_frame_by_side(FWDIR_LEFT)
         self._draw_follow_wall_controller_to_frame_by_side(FWDIR_RIGHT)
 
-    # draw the controller to the frame for the indicated side only
     def _draw_follow_wall_controller_to_frame_by_side(self, side):
+		"""Draw the controller to the frame for the indicated side only"""
         if side == FWDIR_LEFT:
             surface_line = self.follow_wall_controller.l_wall_surface
             distance_vector = self.follow_wall_controller.l_distance_vector
@@ -605,37 +719,58 @@ class FollowWallControllerView(object):
 
 
 #**********************************************************
-class GoToAngleController(object):
+class GoToAngleController(Controller):
 
-    def __init__(self, supervisor):
-        # bind the supervisor
-        self.supervisor = supervisor
-
-        # gains
-        self.k_p = 5.0
+    def __init__(self, supervisor_interface, kP, kI, kD):
+        """Bind the supervisor interface and initialise the controller variables
+        
+        Keywords:
+            supervisor_interface -> SupervisorControllerInterface
+			kP -> float
+			kI -> float
+			kD -> float
+        """
+		super(GoToAngleController, self).__init__(supervisor_interface, 
+			kP, kI, kD)
 
     def execute(self, theta_d):
+		"""Calculate PID terms and generate the supervisor's v and omega"""
+		
         theta = self.supervisor.estimated_pose().theta
         e = self.normalize_angle(theta_d - theta)
-        omega = self.k_p * e
+        omega = self.kP * e
 
         self.supervisor.set_outputs(1.0, omega)
 
-    # map the given angle to the equivalent angle in [ -pi, pi ]
     def normalize_angle(theta):
+		"""Map the given angle to the equivalent angle in [ -pi, pi ]
+		
+		Keywords:
+			theta -> float
+		"""
         return atan2(sin(theta), cos(theta))
 
 
 #**********************************************************
-class GTGAndAOController(object):
+class GTGAndAOController(Controller):
 
-    def __init__(self, supervisor):
-        # bind the supervisor
-        self.supervisor = supervisor
+    def __init__(self, supervisor_interface, kP, kI, kD):
+        """Bind the supervisor interface and initialise the controller variables
+        
+        Keywords:
+            supervisor_interface -> SupervisorControllerInterface
+			kP -> float
+			kI -> float
+			kD -> float
+        """
+		super(GTGAndAOController, self).__init__(supervisor_interface, 
+			kP, kI, kD)
 
         # initialize controllers to blend
-        self.go_to_goal_controller = GoToGoalController(supervisor)
-        self.avoid_obstacles_controller = AvoidObstaclesController(supervisor)
+        self.go_to_goal_controller = GoToGoalController(supervisor_interface, 
+			kP, kI, kD)
+        self.avoid_obstacles_controller = AvoidObstaclesController(
+			supervisor_interface, kP, kI, kD)
 
         # sensor gains (weights)
         self.avoid_obstacles_controller.sensor_gains = [
@@ -646,16 +781,6 @@ class GTGAndAOController(object):
         self.alpha = 0.1  # go-to-goal heading is given this much weight,
                           # avoid-obstacles is given the remaining weight
 
-        # control gains
-        self.kP = 10.0
-        self.kI = 0.0
-        self.kD = 0.0
-
-        # stored values - for computing next results
-        self.prev_time = 0.0
-        self.prev_eP = 0.0
-        self.prev_eI = 0.0
-
         # key vectors and data (initialize to any non-zero vector)
         self.obstacle_vectors = ([[1.0, 0.0]]
             * len(self.avoid_obstacles_controller.proximity_sensor_placements))
@@ -664,7 +789,8 @@ class GTGAndAOController(object):
         self.blended_heading_vector = [1.0, 0.0]
 
     def update_heading(self):
-        # generate and store the vectors generated by the two controller types
+		"""Generate and store vectors generated by the two controller types"""
+		
         self.gtg_heading_vector = (
             self.go_to_goal_controller.calculate_gtg_heading_vector())
         self.ao_heading_vector, self.obstacle_vectors = (
@@ -680,6 +806,8 @@ class GTGAndAOController(object):
             linalg.scale(self.ao_heading_vector, 1.0 - self.alpha))
 
     def execute(self):
+		"""Calculate PID terms and generate the supervisor's v and omega"""
+		
         # calculate the time that has passed since the last control iteration
         current_time = self.supervisor.time()
         dt = current_time - self.prev_time
@@ -707,42 +835,26 @@ class GTGAndAOController(object):
         self.supervisor.set_outputs(v, omega)
 
         # === FOR DEBUGGING ===
-        # self._print_vars(eP, eI, eD, v, omega)
+        if debug:
+			self._print_vars(eP, eI, eD, v, omega)
 
-    def _print_vars(self, eP, eI, eD, v, omega):
-        print "\n\n"
-        print "=============="
-        print "ERRORS:"
-        print "eP: " + str(eP)
-        print "eI: " + str(eI)
-        print "eD: " + str(eD)
-        print ""
-        print "CONTROL COMPONENTS:"
-        print "kP * eP = " + str(self.kP) + " * " + str(eP)
-        print "= " + str(self.kP * eP)
-        print "kI * eI = " + str(self.kI) + " * " + str(eI)
-        print "= " + str(self.kI * eI)
-        print "kD * eD = " + str(self.kD) + " * " + str(eD)
-        print "= " + str(self.kD * eD)
-        print ""
-        print "OUTPUTS:"
-        print "omega: " + str(omega)
-        print "v    : " + str(v)
 
 #***********************************************************
-VECTOR_LEN = 0.75  # length of heading vector
-
-
 class GTGAndAOControllerView(object):
 
     def __init__(self, viewer, supervisor):
-        self.viewer = viewer
+        """Bind the viewe, supervisor and controller
+		
+		Keywords:
+			viewer -> Viewer
+			supervisor -> SupervisorControllerInterface
+		"""
+		self.viewer = viewer
         self.supervisor = supervisor
         self.gtg_and_ao_controller = supervisor.gtg_and_ao_controller
 
-    # draw a representation of the blended controller's internal state to
-    #    the frame
     def draw_gtg_and_ao_controller_to_frame(self):
+		"""Draw blended gtg & ao controller's internal state to the frame"""
         robot_pos, robot_theta = self.supervisor.estimated_pose.vunpack()
 
         # draw the detected environment boundary (i.e. sensor readings)
