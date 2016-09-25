@@ -26,7 +26,6 @@
 
 import serial
 import serial.tools.list_ports
-import threading
 import time
 from math import pi, radians, cos, sin, ceil, e, fabs
 
@@ -54,7 +53,12 @@ linalg = LinearAlgebra()
 #*************************************************
 
 debug = True
-use_serial = False
+use_serial = True
+
+# Serial connectin baud rate
+BAUD_RATE = 115200
+
+# Robot properties for a Zumo 32U4 robot with raspberry pi mounted on top
 
 # Robot's Physical Properties
 R_WHEEL_RADIUS = 0.0194        # meters
@@ -62,53 +66,70 @@ R_WHEEL_BASE_LENGTH = 0.0885   # meters
 R_WHEEL_TICKS_PER_REV = 909.7
 R_MAX_WHEEL_DRIVE_RATE = 100  # rpm
 
-# Robot's Physical Dimensions
-R_BOTTOM_PLATE = ([[-0.024, 0.064],
-                  [0.033, 0.064],
-                  [0.057, 0.043],
-                  [0.074, 0.010],
-                  [0.074, -0.010],
-                  [0.057, -0.043],
-                  [0.033, -0.064],
-                 [-0.025, -0.064],
-                 [-0.042, -0.043],
-                 [-0.048, -0.010],
-                 [-0.048, 0.010],
-                 [-0.042, 0.043]])
+# Robot's Physical Dimensions in meters
+R_BOTTOM_PLATE = ([[0.050, 0.050],
+                  [-0.050, 0.050],
+                  [-0.050, -0.050],
+                  [0.050, -0.050]])
 
-R_TOP_PLATE = ([[-0.031, 0.043],
-                [-0.031, -0.043],
-                 [0.033, -0.043],
-                 [0.052, -0.021],
-                 [0.057, 0.000],
-                 [0.052, 0.021],
-                 [0.033, 0.043]])
+R_TOP_PLATE = ([[0.040, 0.055],
+                  [-0.090, 0.055],
+                  [-0.090, -0.055],
+                  [0.040, -0.055]])
 
 # Sensor read value limits
 R_SENSOR_MIN_READ_VALUE = 18
 R_SENSOR_MAX_READ_VALUE = 3960
 
-R_SENSOR_MIN_RANGE = 0.02
-R_SENSOR_MAX_RANGE = 0.2
+R_SENSOR_MIN_RANGE = 0.01  # meters
+R_SENSOR_MAX_RANGE = 0.30   # metres
+R_SENSOR_PHI_RANGE = 40    # degrees
 
-R_SENSOR_POSES = ([[-0.038, 0.048, 128],  # x, y, theta_degrees
-                   [0.019, 0.064, 75],
-                   [0.050, 0.050, 42],
-                   [0.070, 0.017, 13],
-                   [0.070, -0.017, -13],
-                   [0.050, -0.050, -42],
-                   [0.019, -0.064, -75],
-                  [-0.038, -0.048, -128],
-                  [-0.048, 0.000, 180]])
-
-# Serial connectin baud rate
-BAUD_RATE = 9600
+R_SENSOR_POSES = ([[0.045, 0.040, 90],  # x, y, theta_degrees
+                  [0.045, 0.000, 0],
+                  [0.045, -0.040, -90]])
 
 
 #***********************************************************
 class Robot(object):  # Robot
+    """Class representing a robot simultaneously in the GUI and real world.
 
-    def __init__(self, ID, x=0.0, y=0.0, deg=90.0):
+    Attributes:
+        id -> int
+        wheel_radius -> float
+        wheel_base_length -> float
+        max_speed -> float
+        trans_vel_limit -> float
+        ang_vel_limit -> float
+        pose -> Pose object
+        geometry -> Polygon object
+        global_geometry -> Polygon object
+        left_wheel_encoder -> WheelEncoder object
+        right_wheel_encoder -> WheelEncoder object
+        wheel_encoders -> list
+        proximity_sensors -> list
+        dynamics -> DifferentialDriveDynamics object
+        supervisor -> Supervisor object
+        use_serial -> boolean
+        physical_robot -> RobotPhysicalInterface object
+        left_wheel_drive_rate -> float
+        right_wheel_drive_rate -> float
+
+    Methods:
+        __init__(ID, x=0.0, y=0.0, deg=90.0)
+        step_motion(dt)
+        stop_motion()
+        set_wheel_drive_rates(v_l, v_r)
+    """
+    def __init__(self, ID, x=0.0, y=0.0, deg=0.0):
+        """Bind robot ID and setup robot geometry, location, supervisor & comms.
+
+        Keywords:
+            id -> int
+            x -> float
+            y -> float
+            deg -> float
+        """
         # robot ID
         self.id = ID
 
@@ -139,13 +160,13 @@ class Robot(object):  # Robot
         self.wheel_encoders = (
             [self.left_wheel_encoder, self.right_wheel_encoder])
 
-        # IR sensors
-        self.ir_sensors = []
+        # proximity sensors
+        self.proximity_sensors = []
         for _pose in R_SENSOR_POSES:
-            ir_pose = Pose(_pose[0], _pose[1], radians(_pose[2]))
-            self.ir_sensors.append(
-                ProximitySensor(self, ir_pose, R_SENSOR_MIN_RANGE,
-                    R_SENSOR_MAX_RANGE, radians(20)))
+            sensor_pose = Pose(_pose[0], _pose[1], radians(_pose[2]))
+            self.proximity_sensors.append(
+                ProximitySensor(self, sensor_pose, R_SENSOR_MIN_RANGE,
+                    R_SENSOR_MAX_RANGE, radians(R_SENSOR_PHI_RANGE)))
 
         # dynamics
         self.dynamics = DifferentialDriveDynamics(self.wheel_radius,
@@ -168,8 +189,8 @@ class Robot(object):  # Robot
         self.left_wheel_drive_rate = 0.0
         self.right_wheel_drive_rate = 0.0
 
-    # simulate the robot's motion over the given time interval
     def step_motion(self, dt):
+        """Simulate the robot's motion over the given time interval."""
         v_l = self.left_wheel_drive_rate
         v_r = self.right_wheel_drive_rate
 
@@ -182,20 +203,20 @@ class Robot(object):  # Robot
             self.geometry.get_transformation_to_pose(self.pose))
 
         # update all of the sensors
-        for ir_sensor in self.ir_sensors:
-            ir_sensor.update_position()
+        for proximity_sensor in self.proximity_sensors:
+            proximity_sensor.update_position()
 
         # send wheel speeds to physical robot and retrieve sensor values
         if self.use_serial:
             self.physical_robot.step()
 
     def stop_motion(self):
-        # step the physical robot with it's final (True) zero speeds)
+        """Step the physical robot with it's final (True) zero speeds."""
         if self.use_serial:
             self.physical_robot.step(True)
 
-    # set the drive rates (angular velocities) for this robot's wheels in rad/s
     def set_wheel_drive_rates(self, v_l, v_r):
+        """Set the drive rates (angular vel rad/s) for this robot's wheels."""
         # simulate physical limit on drive motors
         v_l = min(self.max_speed, v_l)
         v_r = min(self.max_speed, v_r)
@@ -207,8 +228,28 @@ class Robot(object):  # Robot
 
 #******************************************************
 class RobotView(object):
+    """Class to draw the robot, supervisor and ir sensors to the frame.
 
+    Attributes:
+        viewer -> Viewer object
+        robot -> Robot object
+        supervisor_view -> SupervisorView object
+        proximity_sensor_views -> list
+        traverse_path -> list
+
+    Methods:
+        __init__(viewer, robot)
+        draw_robot_to_frame()
+        _draw_traverse_path_to_frame()
+        _draw_rich_traverse_path_to_frame()
+    """
     def __init__(self, viewer, robot):
+        """Binds the view and robot, sets up the supervisor and ir sensor views
+
+        Keywords:
+            viewer -> Viewer object
+            robot -> Robot object
+        """
         self.viewer = viewer
         self.robot = robot
 
@@ -216,14 +257,16 @@ class RobotView(object):
         self.supervisor_view = (
             SupervisorView(viewer, robot.supervisor, robot.global_geometry))
 
-        # add the IR sensor views for this robot
-        self.ir_sensor_views = []
-        for ir_sensor in robot.ir_sensors:
-            self.ir_sensor_views.append(ProximitySensorView(viewer, ir_sensor))
+        # add the proximity sensor views for this robot
+        self.proximity_sensor_views = []
+        for proximity_sensor in robot.proximity_sensors:
+            self.proximity_sensor_views.append(ProximitySensorView(
+                viewer, proximity_sensor))
 
         self.traverse_path = []  # this robot's traverse path
 
     def draw_robot_to_frame(self):
+        """Draws the robot and proximity sensors to the viewer frame."""
         # update the robot traverse path
         position = self.robot.pose.vposition()
         self.traverse_path.append(position)
@@ -231,10 +274,10 @@ class RobotView(object):
         # draw the internal state (supervisor) to the frame
         self.supervisor_view.draw_supervisor_to_frame()
 
-        # draw the IR sensors to the frame if indicated
+        # draw the proximity sensors to the frame if indicated
         if self.viewer.draw_invisibles:
-            for ir_sensor_view in self.ir_sensor_views:
-                ir_sensor_view.draw_proximity_sensor_to_frame()
+            for proximity_sensor_view in self.proximity_sensor_views:
+                proximity_sensor_view.draw_proximity_sensor_to_frame()
 
         # draw the robot
         robot_bottom = self.robot.global_geometry.vertexes
@@ -254,12 +297,13 @@ class RobotView(object):
             self._draw_traverse_path_to_frame()
 
     def _draw_traverse_path_to_frame(self):
+        """Draws a line representing the already travelled path of the robot."""
         (self.viewer.current_frame.add_lines([self.traverse_path],
                                               color="black",
                                               linewidth=0.01))
 
-    # draws the traverse path as dots weighted according to robot speed
     def _draw_rich_traverse_path_to_frame(self):
+        """Draws the traverse path as dots weighted according to robot speed."""
         # when robot is moving fast, draw small, opaque dots
         # when robot is moving slow, draw large, transparent dots
         d_min, d_max = 0.0, 0.01574  # possible distances between dots
@@ -285,8 +329,28 @@ class RobotView(object):
 
 #******************************************************************
 class RobotPhysicalInterface(object):
+    """Handles communication to & from physical robot to mimic simulated robot.
 
+    Attributes:
+        robot -> Robot object
+        v_l -> int
+        v_r -> int
+        dir_l -> char
+        dir_r -> char
+
+    Methods:
+        __init__(robot)
+        step(final=False)
+        read_proximity_sensors()
+        read_wheel_encoders()
+        get_wheel_drive_rates()
+    """
     def __init__(self, robot):
+        """Binds the robot and sets up serial communication to the robot.
+
+        Keywords:
+            robot -> Robot object
+        """
         self.robot = robot
 
         # initialise velocity and direction of wheels
@@ -313,7 +377,7 @@ class RobotPhysicalInterface(object):
                 print("Now connected to Zumo")
 
     def step(self, final=False):
-        # get the wheel drives rates assigned to the robot by the supervisor
+        """Get wheel drives rates assigned to the robot by the supervisor."""
         self.get_wheel_drive_rates()
         if final:
             # set the wheel rates to zero to stop the robot if final step
@@ -334,11 +398,23 @@ class RobotPhysicalInterface(object):
         else:
             self.dir_r = 'F'
 
+        #test vel values
+        self.v_l = 100
+        self.v_r = 100
+
+        #convert v_l to chars
+        char1_l = (self.v_l & 0xFF00) >> 8
+        char2_l = self.v_l & 0x00FF
+
+        #convert v_l to chars
+        char1_r = (self.v_r & 0xFF00) >> 8
+        char2_r = self.v_r & 0x00FF
+
         # command for left wheel - [dir]L###
-        to_send_l = "{}L{:03d}".format(self.dir_l, self.v_l)
+        to_send_l = self.dir_l + 'L' + chr(char1_l) + chr(char2_l)
 
         # command for right wheel - [dir]R###
-        to_send_r = "{}R{:03d}".format(self.dir_r, self.v_r)
+        to_send_r = self.dir_r + 'R' + chr(char1_r) + chr(char2_r)
 
         # join these commands together
         to_send = to_send_l + to_send_r
@@ -358,39 +434,51 @@ class RobotPhysicalInterface(object):
             # run serial comms to send send_queue to the physical robot
             self.robot_comm.run()
 
-    # read the proximity sensors of the physical robot
     def read_proximity_sensors(self):
-        return [s.read() for s in self.robot.ir_sensors]
+        """Read the proximity sensors of the physical robot."""
+        return [s.read() for s in self.robot.proximity_sensors]
 
-    # read the wheel encoders of the physical robot
     def read_wheel_encoders(self):
+        """Read the wheel encoders of the physical robot."""
         return [enc.read() for enc in self.robot.wheel_encoders]
 
-    # apply wheel drive command to the physical robot (convert rad/s to rpm)
     def get_wheel_drive_rates(self):
+        """Apply wheel drive command to the physical robot (rad/s to rpm)."""
         self.v_l = int(self.robot.left_wheel_drive_rate * (60 / (2 * pi)))
         self.v_r = int(self.robot.right_wheel_drive_rate * (60 / (2 * pi)))
 
 
 #******************************************************************
-class RobotComm(object):  # threading.Thread):
+class RobotComm(object):
+    """Class to create a serial communication link to the physical robot.
 
-    def __init__(self, robot):  # , thread_id, name):
-        # threading.Thread.__init__(self)
+    Attributes:
+        robot -> Robot object
+        ser -> Serial object
+        send_queue -> list
+        recieve_queue -> list
+        ser_open -> boolean
+        ser_num -> int
+        serial_sends -> list
+        connected -> boolean
 
-        # self.thread_id = thread_id
-        # self.name = name
+    Methods:
+        __init__(robot)
+        connect()
+        run()
+    """
+    def __init__(self, robot):
+        """Binds the robot this serial comm will be for and sets up serial lists
 
-        # bind the robot this serial comm will be for
+        Keywords:
+            robot -> Robot object
+        """
         self.robot = robot
 
         self.ser = None
 
         self.send_queue = []
-        self.send_lock = threading.Lock()
-
         self.recieve_queue = []
-        self.recieve_lock = threading.Lock()
 
         self.ser_open = False
         self.ser_num = 0
@@ -399,18 +487,16 @@ class RobotComm(object):  # threading.Thread):
 
         self.connected = False
 
-        #self.start()
         self.connect()
 
     def connect(self):
+        """Searches through available serial ports for the robot."""
         com_list = []
         comports = serial.tools.list_ports.comports()
         for comport in comports:
             for thing in comport:
                 # creates list of available com ports
                 com_list.append(thing)
-        if debug:
-            print(com_list)
 
         # removes duplicates from comList and returns a list
         com_list = list(set(com_list))
@@ -424,12 +510,13 @@ class RobotComm(object):  # threading.Thread):
                 ser = serial.Serial(port, baudrate=BAUD_RATE, timeout=None)
                 ser.write('V\n')
                 result = ser.readline()
+                print('Result: {}').format(result)
 
                 if debug:
                     print (port)
                     print (ser)
                     print ("Result:" + result)
-                if "ZUMO" in result:
+                if "butter" in result:
                     print ("Connect Successful! Connected on port:" + port)
                     self.ser = ser
                     self.ser.flush()
@@ -452,13 +539,7 @@ class RobotComm(object):  # threading.Thread):
                 self.robot.use_serial = False
 
     def run(self):
-        #self.connect()
-        #lastUpdateTime = time.clock()
-
-        #while(self.connected):
-            #if ((time.clock() - lastUpdateTime) >= 0.05): # run loop every 50ms
-                #lastUpdateTime = time.clock()
-
+        """Sends serial commands to the robot."""
         # send waiting messages
         send = False
         if(len(self.send_queue) > 0):
@@ -466,9 +547,7 @@ class RobotComm(object):  # threading.Thread):
             to_send = self.send_queue.pop(0)
             self.send_lock.release()
             send = True
-        #else:
-            # keeps infinite while loop from killing processor
-        #    time.sleep(0.01)
+
         if send:
             send_time = time.clock() - self.start_time
             self.serial_sends.append([float(send_time), str(to_send)])
@@ -479,30 +558,62 @@ class RobotComm(object):  # threading.Thread):
                         self.ser.write(str(to_send))
             if debug:
                 print(("sent '{}' to COM{}").format(
-                    str(to_send).strip('\r'), self.ser_num))
+                    str(to_send), self.ser_num))
 
 
 #******************************************************
-# AN ABSTRACT SENSOR CLASS
 class Sensor(object):
+    """Abstract sensor class.
+    Attributes:
+        None
 
+    Methods:
+        read()
+    """
     def read(self):
+        """Placeholder method for parent Sensor class."""
         raise NotImplementedError()
 
 
 #******************************************************
 class ProximitySensor(Sensor):
+    """Class representing a proximity sensor mounted to the robot.
 
+    Attributes:
+        robot -> Robot object
+        placement_pose -> Pose object
+        pose -> Pose object
+        detector_line_source -> LineSegment object
+        detector_line -> LineSegment object
+        min_range -> float
+        max_range -> float
+        phi_view -> float
+        target_delta -> float
+        read_value -> float
+
+    Methods:
+        __init__(robot, placement_pose, min_range, max_range, phi_view)
+        detect(delta)
+        read()
+        update_position()
+        _update_pose()
+    """
     def __init__(self, robot,  # robot this sensor is attached to
             placement_pose,    # pose of this sensor relative to the robot
             min_range,         # min sensor range (meters)
             max_range,         # max sensor range (meters)
             phi_view):   # view angle of this sensor (rad from front of robot)
+        """Binds the robot and sets up the sensor's pose and attributes.
 
-        # (NOTE: pose normalized on robot located at origin and with theta 0,
-        # i.e. facing east)
+        Keywords:
+            robot -> Robot object
+            min_range -> float
+            max_range -> float
+            phi_view -> float
 
-        # bind the robot
+        (NOTE: pose normalized on robot located at origin and with theta 0,
+        i.e. facing east)
+        """
         self.robot = robot
 
         # pose attributes
@@ -531,9 +642,8 @@ class ProximitySensor(Sensor):
         # sensor output
         self.read_value = R_SENSOR_MIN_READ_VALUE
 
-    # set this proximity sensor to detect an object at
-    # distance ( delta * max_range )
     def detect(self, delta):
+        """Sets proximity sensor to detect object at dist (delta*max_range)."""
         if delta is not None and (delta < 0.0 or delta > 1.0):
             raise Exception("delta out of bounds - must be in range [0.0, 1.0]")
 
@@ -554,12 +664,12 @@ class ProximitySensor(Sensor):
                     int(ceil(R_SENSOR_MAX_READ_VALUE * e ** (-30 * (d - 0.02))))
                     )
 
-    # get this sensor's output
     def read(self):
+        """Get this sensor's output."""
         return self.read_value
 
-    # update the global position of this sensor
     def update_position(self):
+        """Update the global position of this sensor."""
         # update global pose
         self._update_pose()
 
@@ -567,19 +677,39 @@ class ProximitySensor(Sensor):
         self.detector_line = (
             self.detector_line_source.get_transformation_to_pose(self.pose))
 
-    # update this sensor's pose
     def _update_pose(self):
+        """Update this sensor's pose."""
         self.pose = self.placement_pose.transform_to(self.robot.pose)
 
 
 #*******************************************************
 class ProximitySensorView(object):
+    """Class to draw the proximity sensor to the frame.
 
+    Attributes:
+        viewer -> Viewer object
+        proximity_sensor -> ProximitySensor object
+
+    Methods:
+        __init__(viewer, proximity_sensor)
+        draw_proximity_sensor_to_frame()
+        _draw_detection_to_frame()
+        _draw_detector_line_to_frame()
+        _draw_detector_line_origins_to_frame()
+        _draw_bounding_circle_to_frame()
+    """
     def __init__(self, viewer, proximity_sensor):
+        """Binds the viewer and proximity_sensor.
+
+        Keywords:
+            viewer -> Viewer object
+            proximity_sensor -> ProximitySensor object
+        """
         self.viewer = viewer
         self.proximity_sensor = proximity_sensor
 
     def draw_proximity_sensor_to_frame(self):
+        """Draws the proximity sensor to the frame."""
         proximity_sensor = self.proximity_sensor
 
         # grab proximity sensor pose values
@@ -614,6 +744,7 @@ class ProximitySensorView(object):
         # self._draw_detection_to_frame()
 
     def _draw_detection_to_frame(self):
+        """Draws a circle on the view of the sensor where obstacle detected."""
         target_delta = self.proximity_sensor.target_delta
         if target_delta is not None:
             detector_endpoints = self.proximity_sensor.detector_line.vertexes
@@ -628,6 +759,7 @@ class ProximitySensorView(object):
                                                  alpha=0.7)
 
     def _draw_detector_line_to_frame(self):
+        """Draws a line on the view of the sensor showing its range."""
         vertexes = self.proximity_sensor.detector_line.vertexes
 
         self.viewer.current_frame.add_lines([vertexes],
@@ -636,12 +768,14 @@ class ProximitySensorView(object):
                                             alpha=0.7)
 
     def _draw_detector_line_origins_to_frame(self):
+        """Draws a circle at the origin of the proximity sensor on the robot."""
         origin = self.proximity_sensor.detector_line.vertexes[0]
         self.viewer.current_frame.add_circle(pos=(origin[0], origin[1]),
                                              radius=0.02,
                                              color="black")
 
     def _draw_bounding_circle_to_frame(self):
+        """Draws a bounding circle around the proximity sensor's range."""
         c, r = self.proximity_sensor.detector_line.bounding_circle
         self.viewer.current_frame.add_circle(pos=c,
                                              radius=r,
@@ -655,40 +789,75 @@ class ProximitySensorView(object):
 
 #*******************************************************
 class WheelEncoder(Sensor):
+    """Class representing a wheel encoder on the robot.
 
+    Attributes:
+        ticks_per_rev -> float
+        real_revs -> float
+        tick_count -> int
+
+    Methods:
+        __init__(ticks_per_rev)
+        step_revolutions(revolutions)
+        read()
+    """
     def __init__(self, ticks_per_rev):
+        """Initialises the wheel encoder parameters and initial count of 0.
+
+        Keywords:
+            ticks_per_rev -> float
+        """
         self.ticks_per_rev = ticks_per_rev
         self.real_revs = 0.0
         self.tick_count = 0
 
-    # update the tick count for this wheel encoder
-    # takes a float representing the number of forward revolutions made
     def step_revolutions(self, revolutions):
+        """Update the tick count for this wheel encoder.
+
+        Takes a float representing the number of forward revolutions made.
+        """
         self.real_revs += revolutions
         self.tick_count = int(self.real_revs * self.ticks_per_rev)
 
     def read(self):
+        """Returns the current encoder tick count."""
         return self.tick_count
 
 
 #***********************************************************
 class DifferentialDriveDynamics(object):
+    """Class for calculating the change in robot position for calculated vels.
 
+    Attributes:
+        wheel_radius -> float
+        wheel_base_length -> float
+
+    Methods:
+        __init(wheel_radius, wheel_base_length)
+        apply_dynamics(v_l, v_r, dt, pose, wheel_encoders)
+    """
     def __init__(self, wheel_radius, wheel_base_length):
+        """Applies the wheel radius and wheel base length of the robot.
+
+        Keywords:
+            wheel_radius -> float
+            wheel_base_length -> float
+        """
         self.wheel_radius = wheel_radius
         self.wheel_base_length = wheel_base_length
 
-    # apply physical dynamics to the given representations of moving parts
     def apply_dynamics(self, v_l, v_r, dt,         # dynamics parameters
                             pose, wheel_encoders):  # the moving parts
-
+        """Apply physical dynamics to the robot's moving parts."""
         # calculate the change in wheel angle (in radians)
         d_angle_left = dt * v_l
+        #print("change in left wheel angle: {}").format(d_angle_left)
         d_angle_right = dt * v_r
 
         # calculate the distance traveled
         wheel_meters_per_rad = self.wheel_radius
         d_left_wheel = d_angle_left * wheel_meters_per_rad
+        #print("change in left wheel travelled: {}").format(d_left_wheel)
         d_right_wheel = d_angle_right * wheel_meters_per_rad
         d_center = (d_left_wheel + d_right_wheel) / 2.0
 

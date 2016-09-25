@@ -11,13 +11,16 @@ Zumo32U4Motors motors;
 signed int velL; //motor speed received
 signed int velR;
 signed int dir = 1;   //direction speed recieved is in
-signed int accum; //accumulation factor for adding speed characters
-boolean speedIncoming = false; //to indicate receiving left & right speed values
+char char1 = 0; //MSB of speed
+char char2 = 0; //LSB of speed
 boolean leftSpeedIncoming = false;//to indicate to read in motor speed when true
 boolean rightSpeedIncoming = false;
 boolean leftSpeedReceived = false;//to indicate ready to change motor speed to new speeds
 boolean rightSpeedReceived = false;
+boolean char1Received = false;
 unsigned int time = 0;
+unsigned int lastDisplayTime = 0;
+unsigned int updateTime = 0;
 
 //globals for encoders:
 const char encoderErrorLeft[] PROGMEM = "!<c2";
@@ -32,89 +35,97 @@ void setup() {
 // Reads in speeds in form [dir][side]###
 // eg to move right forward speed 140, recieve via serial FR140 
 void processSerial(Stream *serial){
-  do
-  {
-    if (serial->available()) { //process input from the USB
-      char  inChar = (char)serial->read();
-      switch(inChar){
-        case 'V':
-          serial->println("ZUMO32U4");
-          break;
-        case 'S':
-          speedIncoming = true;
-          break;
-        case 'L':
-          leftSpeedIncoming = true;
-          velL = 0;
-          accum = 100;
-          time = micros();
-          break;
-        case 'R':
-          rightSpeedIncoming = true;
-          velR = 0;
-          accum = 100;
-          break;
-        case 'F':
-          dir = 1;
-          break;
-        case 'B':
-          dir = -1;
-          break;
-        default:
-          if (inChar >= '0' && inChar <= '9'){
-            if (leftSpeedIncoming){
-              velL = velL + int((inChar - '0')) * accum;
-              time = micros() - time;
-              accum = accum / 10; //decreases accum for next digit
-              
-              // Update the LCD with process time
-              //lcd.clear();
-              //lcd.print(time);
-              
-              
-              if (accum < 1){ //apply direction and stop adding to vel_l
-                velL = velL * dir; 
-                leftSpeedIncoming = false;
-                leftSpeedReceived = true;
-                //time = micros() - time;
-                //lcd.gotoXY(0, 1);
-                //lcd.print(time);
-              } 
-            }
+  if (serial->available()) { //process input from the USB
+    char  inChar = (char)serial->read();
+    switch(inChar){
+      case 'V':
+        serial->println("butter");
+        break;
+      case 'L':
+        leftSpeedIncoming = true;
+        velL = 0;
+        time = micros();
+        break;
+      case 'R':
+        rightSpeedIncoming = true;
+        velR = 0;
+        break;
+      case 'F':
+        dir = 1;
+        break;
+      case 'B':
+        dir = -1;
+        break;
+      default:
+        if (leftSpeedIncoming){
+          if (char1Received == false){
+            char1 = inChar;
+            char1Received = true;
+          }else{
+            char2 = (char)serial->read();
+            lcd.clear();
             
-            if (rightSpeedIncoming){
-              velR = velR + int((inChar - '0')) * accum;
-              
-              accum = accum / 10; //decreases accum for next digit
-              
-              if (accum < 1){ //apply direction and stop adding to vel_l
-                velR = velR * dir; 
-                rightSpeedIncoming = false;
-                rightSpeedReceived = true;
-                
-                speedIncoming = false;
-                serial->print("D");
-                
-                //serial->print("R");
-                //serial->println(velR);
-              }
+            char2 = inChar;
+            velL = char1 << 2 | char2;
+            
+            lcd.print(char1);
+            lcd.gotoXY(5, 0);
+            lcd.print(char2);
+            lcd.gotoXY(0, 1);
+            lcd.print(velL);
+            
+            char1 = 0;
+            char2 = 0;
+            time = micros() - time;
+            if (dir == -1){
+              velL = -velL;
             }
-          }
-          break;
-      } 
-    }
-  } while (speedIncoming);
+            leftSpeedIncoming = false;
+            leftSpeedReceived = true;
+            char1Received = false;
+            //time = micros() - time;    
+          }            
+        }
+        if (rightSpeedIncoming){
+          if (char1Received == false){
+            char1 = inChar;
+            char1Received = true;
+          }else{
+            char2 = inChar;
+            velR = char1 << 2 | char2;
+            
+            char1 = 0;
+            char2 = 0;
+            time = micros() - time;
+            if (dir == -1){
+              velR = -velR;
+            }
+            rightSpeedIncoming = false;
+            rightSpeedReceived = true;
+            char1Received = false;
+            //time = micros() - time;            
+          } 
+        }
+        break;
+    } 
+  }
 }
 
 void loop() {
   
-  static uint8_t lastDisplayTime;
+
   static uint8_t displayErrorLeftCountdown = 0;
   static uint8_t displayErrorRightCountdown = 0;
   static uint8_t batteryLevel = 0;
-
-  if ((uint8_t)(millis() - lastDisplayTime) >= 50)
+  
+  updateTime = (uint8_t)(millis() - lastDisplayTime);
+  
+  if (updateTime >= 10)
   {
+    // check process speed
+    //lcd.gotoXY(0, 1);
+    //lcd.print(updateTime);
+    
     lastDisplayTime = millis();
     
     //****Serial read of intended motor speeds
@@ -159,21 +170,21 @@ void loop() {
       
       
       // Update the LCD with encoder counts and error info.
-      lcd.clear();
-      lcd.print("L");
-      lcd.gotoXY(1, 0);
-      lcd.print(velL);//countsLeft);
-      lcd.gotoXY(4, 0);
-      lcd.print("R:");
-      lcd.gotoXY(5, 0);
-      lcd.print(velR);//countsRight);
+      //lcd.clear();
+      //lcd.print("L");
+      //lcd.gotoXY(1, 0);
+      //lcd.print(velL);//countsLeft);
+      //lcd.gotoXY(4, 0);
+      //lcd.print("R:");
+      //lcd.gotoXY(5, 0);
+      //lcd.print(velR);//countsRight);
       
       if (displayErrorLeftCountdown)
       {
         // Show an exclamation point on the first line to
         // indicate an error from the left encoder.
-        lcd.gotoXY(7, 0);
-        lcd.print('!');
+        //lcd.gotoXY(7, 0);
+        //lcd.print('!');
         displayErrorLeftCountdown--;
       }
   
@@ -181,8 +192,8 @@ void loop() {
       {
         // Show an exclamation point on the second line to
         // indicate an error from the left encoder.
-        lcd.gotoXY(7, 1);
-        lcd.print('!');
+        //lcd.gotoXY(7, 1);
+        //lcd.print('!');
         displayErrorRightCountdown--;
       }
   
@@ -192,17 +203,16 @@ void loop() {
           countsLeft, countsRight, errorLeft, errorRight);
       //Serial.println(report);
       */
-    }
-    
+    }    
     // check battery level
-    batteryLevel = readBatteryMillivolts();
+    /*batteryLevel = readBatteryMillivolts();
     lcd.gotoXY(0, 1);
     lcd.print("        ");
     lcd.gotoXY(0, 1);
     lcd.print("B:");
     lcd.gotoXY(2, 1);
     lcd.print(batteryLevel);
-  
+    */
     
   }
 }

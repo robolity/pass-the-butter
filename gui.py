@@ -98,7 +98,7 @@ class Viewer(object):
 
         # initialize the window
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        self.window.set_title('Zumo Simulator')
+        self.window.set_title('Pass the Butter')
         self.window.set_resizable(False)
         self.window.connect('delete_event', self.on_delete)
 
@@ -328,6 +328,7 @@ class Viewer(object):
 
     def on_reset(self, widget):
         """The simulation world, robots and supervisors are reset."""
+        self.world.stop_robots()
         gobject.source_remove(self.sim_event_source)
         self._control_panel_state_init()
         # reset the world in the viewer
@@ -410,6 +411,7 @@ class Viewer(object):
         return False
 
     def _decorate_draw_invisibles_button_active(self):
+        """Updates draw invisibles button text if active."""
         draw_invisibles_image = gtk.Image()
         draw_invisibles_image.set_from_stock(gtk.STOCK_REMOVE,
             gtk.ICON_SIZE_BUTTON)
@@ -417,6 +419,7 @@ class Viewer(object):
         self._button_draw_invisibles.set_label('Hide Invisibles')
 
     def _decorate_draw_invisibles_button_inactive(self):
+        """Updates draw invisibles button text if inactive."""
         draw_invisibles_image = gtk.Image()
         draw_invisibles_image.set_from_stock(gtk.STOCK_ADD,
             gtk.ICON_SIZE_BUTTON)
@@ -443,6 +446,7 @@ class Frame(object):
         self.draw_list = []
 
     def add_circle(self, pos, radius, color, alpha=None):
+        """Adds drawn circles to the list of frame objects."""
         self.draw_list.append({
           'type': 'circle',
           'pos': pos,
@@ -452,6 +456,7 @@ class Frame(object):
         })
 
     def add_polygons(self, polygons, color, alpha=None):
+        """Adds drawn polygons to the list of frame objects."""
         self.draw_list.append({
           'type': 'polygons',
           'polygons': polygons,
@@ -460,6 +465,7 @@ class Frame(object):
         })
 
     def add_lines(self, lines, linewidth, color, alpha=None):
+        """Adds drawn lines to the list of frame objects."""
         self.draw_list.append({
           'type': 'lines',
           'lines': lines,
@@ -488,10 +494,12 @@ class Painter(object):
     """
 
     def __init__(self, drawing_area, pixels_per_meter):
+        """Initialises the drawing area and its size."""
         self.drawing_area = drawing_area
         self.pixels_per_meter = pixels_per_meter
 
     def draw_frame(self, frame):
+        """Draws the frame and all the object it contains into the frame."""
         context = self.drawing_area.window.cairo_create()
 
         width_pixels = self.drawing_area.allocation.width
@@ -532,6 +540,7 @@ class Painter(object):
     def draw_circle(self, context,
                    pos, radius,
                    color, alpha):
+        """Draws circle to the frame."""
         self.set_color(context, color, alpha)
         context.arc(pos[0], pos[1], radius, 0, 2.0 * pi)
         context.fill()
@@ -539,6 +548,7 @@ class Painter(object):
     def draw_polygons(self, context,
                      polygons,
                      color, alpha):
+        """Draws polygons to the frame."""
         self.set_color(context, color, alpha)
         for polygon in polygons:
             context.new_path()
@@ -550,6 +560,7 @@ class Painter(object):
     def draw_lines(self, context,
                   lines, linewidth,
                   color, alpha):
+        """Draws lines to the frame."""
         self.set_color(context, color, alpha)
         context.set_line_width(linewidth)
         for line in lines:
@@ -560,6 +571,7 @@ class Painter(object):
             context.stroke()
 
     def set_color(self, cairo_context, color_string, alpha):
+        """Pulls colour value from the ColorPallette object."""
         ColorPalette.dab(cairo_context, color_string, alpha)
 
 

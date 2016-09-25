@@ -60,6 +60,7 @@ class LinearAlgebra(object):
         rotate_and_translate_vectors(vects, theta, tvect)
     """
     def __init__(self):
+        """No initialisation operations."""
         pass
 
     def add(self, a, b):

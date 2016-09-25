@@ -28,7 +28,6 @@
 from environment import World
 
 REFRESH_RATE = 10.0  # hertz
-# Zumo32u4 runs at 100.0 hertz max
 
 
 class Simulator(object):

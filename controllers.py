@@ -62,7 +62,7 @@ class Controller(object):
     """Parent controller class to bind the generic controller inputs & outputs
 
     Attributes:
-        supervisor -> SupervisorControllerInterface
+        supervisor -> SupervisorControllerInterface object
         kP -> float
         kI -> float
         kD -> float
@@ -80,7 +80,7 @@ class Controller(object):
         """Bind the supervisor interface and initialise the controller variables
 
         Keywords:
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
         """
         # bind the supervisor
         self.supervisor = supervisor
@@ -125,31 +125,34 @@ class Controller(object):
         print "v    : " + str(v)
 
 
-#************************************************************		
+#************************************************************
 class GoToGoalController(Controller):
     """PID controller to direct robot towards the goal location
 
     Attributes:
+        supervisor -> SupervisorControllerInterface object
         kP -> float
         kI -> float
         kD -> float
         prev_time -> float
         prev_eP -> float
         prev_eI -> float
-        gtg_heading_vector -> 2-dim array
+
+        gtg_heading_vector -> 2-item list
 
     Methods:
-        __init__(supervisor)
+        _print_vars(eP, eI, eD, v, omega)
+
+        __init__(supervisor, kP, kI, kD)
         update_heading()
         execute()
         calculate_gtg_heading_vector()
-        _print_vars(eP, eI, eD, v, omega)
     """
     def __init__(self, supervisor, kP, kI, kD):
         """Bind the supervisor interface and initialise the controller variables
 
         Keywords:
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
             kP -> float
             kI -> float
             kD -> float
@@ -202,7 +205,7 @@ class GoToGoalController(Controller):
         Return a go-to-goal heading vector in the robot's reference frame
 
         Returns:
-            goal -> 2-dim array
+            goal -> 2-item list
         """
         # get the inverse of the robot's pose
         robot_inv_pos, robot_inv_theta = (
@@ -215,25 +218,26 @@ class GoToGoalController(Controller):
 
         return goal
 
-		
+
 #**********************************************************
 class GoToGoalControllerView(object):
-    """PID controller to direct robot towards the goal location
+    """Generates a view of the calculated go to goal heading vector.
 
     Attributes:
         viewer -> Viewer
-        supervisor -> SupervisorControllerInterface
-        go_to_goal_controller -> GoToGoalContoller
+        supervisor -> SupervisorControllerInterface object
+        go_to_goal_controller -> GoToGoalContoller object
 
     Methods:
+        __init__(viewer, supervisor)
         draw_go_to_goal_controller_to_frame()
     """
     def __init__(self, viewer, supervisor):
-        """Bind the viewe, supervisor and controller
+        """Bind the viewer, supervisor and controller
 
         Keywords:
             viewer -> Viewer
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
         """
         self.viewer = viewer
         self.supervisor = supervisor
@@ -261,30 +265,32 @@ class AvoidObstaclesController(Controller):
     """PID controller to direct robot away from obstacles
 
     Attributes:
-        supervisor -> SupervisorControllerInterface
-        proximity_sensor_placements -> list
-        sensor_gains -> list
+        supervisor -> SupervisorControllerInterface object
         kP -> float
         kI -> float
         kD -> float
         prev_time -> float
         prev_eP -> float
         prev_eI -> float
-        obstacle_vectors -> list of 2-dim arrays
-        ao_heading_vector -> 2-dim array
+
+        proximity_sensor_placements -> list
+        sensor_gains -> list
+        obstacle_vectors -> list of 2-item lists
+        ao_heading_vector -> 2-item list
 
     Methods:
-        __init__(supervisor)
+        _print_vars(eP, eI, eD, v, omega)
+
+        __init__(supervisor, kP, kI, kD)
         update_heading()
         execute()
         calculate_ao_heading_vector()
-        _print_vars(eP, eI, eD, v, omega)
     """
     def __init__(self, supervisor, kP, kI, kD):
         """Bind the supervisor interface and initialise the controller variables
 
         Keywords:
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
             kP -> float
             kI -> float
             kD -> float
@@ -351,8 +357,8 @@ class AvoidObstaclesController(Controller):
         returns vectors to detected obstacles in the robot's reference frame
 
         Returns:
-            ao_heading_vector -> 2-dim array
-            obstacle_vectors -> list of 2-dim arrays
+            ao_heading_vector -> 2-item list
+            obstacle_vectors -> list of 2-item lists
         """
         # initialize vector
         obstacle_vectors = [[0.0, 0.0]] * len(self.proximity_sensor_placements)
@@ -385,12 +391,12 @@ class AvoidObstaclesController(Controller):
 
 #*********************************************************
 class AvoidObstaclesControllerView(object):
-    """PID controller to direct robot towards the goal location
+    """Generates a view of avoid obstacle heading vector and obstacle boundary.
 
     Attributes:
-        viewer -> Viewer
-        supervisor -> SupervisorControllerInterface
-        avoid_obstacles_controller -> AvoidObstaclesController
+        viewer -> Viewer object
+        supervisor -> SupervisorControllerInterface object
+        avoid_obstacles_controller -> AvoidObstaclesController object
 
     Methods:
         __init__(viewer, supervisor)
@@ -398,11 +404,11 @@ class AvoidObstaclesControllerView(object):
         draw_go_to_goal_controller_to_frame()
     """
     def __init__(self, viewer, supervisor):
-        """Bind the viewe, supervisor and controller
+        """Bind the viewer, supervisor and controller
 
         Keywords:
             viewer -> Viewer
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
         """
         self.viewer = viewer
         self.supervisor = supervisor
@@ -441,12 +447,43 @@ class AvoidObstaclesControllerView(object):
 
 #****************************************************
 class FollowWallController(Controller):
+    """PID controller to direct robot to follow along the wall
 
+    Attributes:
+        supervisor -> SupervisorControllerInterface object
+        kP -> float
+        kI -> float
+        kD -> float
+        prev_time -> float
+        prev_eP -> float
+        prev_eI -> float
+
+        proximity_sensor_placements -> list
+        follow_distance -> float
+        l_wall_surface -> list
+        l_parallel_component -> list
+        l_perpendicular_component -> list
+        l_distance_vector -> list
+        l_fw_heading_vector -> list
+        r_wall_surface -> list
+        r_parallel_component -> list
+        r_perpendicular_component -> list
+        r_distance_vector -> list
+        r_fw_heading_vector -> list
+
+    Methods:
+        _print_vars(eP, eI, eD, v, omega)
+
+        __init__(supervisor, kP, kI, kD)
+        update_heading()
+        execute()
+        calculate_fw_heading_vector()
+    """
     def __init__(self, supervisor, kP, kI, kD):
         """Bind the supervisor interface and initialise the controller variables
 
         Keywords:
-            supervisor_interface -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
             kP -> float
             kI -> float
             kD -> float
@@ -541,7 +578,6 @@ class FollowWallController(Controller):
         if debug:
             self._print_vars(eP, eI, eD, v, omega)
 
-
     def calculate_fw_heading_vector(self, follow_direction):
         """Calculate and return follow wall heading vector
 
@@ -633,13 +669,25 @@ class FollowWallController(Controller):
 
 #**********************************************************
 class FollowWallControllerView(object):
+    """Generates a view of the follow wall heading vector and followed wall.
 
+    Attributes:
+        viewer -> Viewer
+        supervisor -> SupervisorControllerInterface object
+        follow_wall_controller -> FollowWallController object
+
+    Methods:
+        __init__(viewer, supervisor)
+        draw_active_follow_wall_controller_to_frame()
+        draw_complete_follow_wall_controller_to_frame()
+        _draw_follow_wall_controller_to_frame_by_side()
+    """
     def __init__(self, viewer, supervisor):
         """Bind the viewe, supervisor and controller
 
         Keywords:
             viewer -> Viewer
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
         """
         self.viewer = viewer
         self.supervisor = supervisor
@@ -741,12 +789,30 @@ class FollowWallControllerView(object):
 
 #**********************************************************
 class GoToAngleController(Controller):
+    """PID controller to direct robot to follow a target angle.
 
+    Attributes:
+        supervisor -> SupervisorControllerInterface object
+        kP -> float
+        kI -> float
+        kD -> float
+        prev_time -> float
+        prev_eP -> float
+        prev_eI -> float
+
+    Methods:
+        _print_vars(eP, eI, eD, v, omega)
+
+        __init__(supervisor, kP, kI, kD)
+        update_heading()
+        execute()
+        calculate_fw_heading_vector()
+    """
     def __init__(self, supervisor, kP, kI, kD):
         """Bind the supervisor interface and initialise the controller variables
 
         Keywords:
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
             kP -> float
             kI -> float
             kD -> float
@@ -774,12 +840,38 @@ class GoToAngleController(Controller):
 
 #**********************************************************
 class GTGAndAOController(Controller):
+    """PID controller to driving robot with a blend of GTG and AO directions
 
+    Attributes:
+        supervisor -> SupervisorControllerInterface object
+        kP -> float
+        kI -> float
+        kD -> float
+        prev_time -> float
+        prev_eP -> float
+        prev_eI -> float
+
+        go_to_goal_controller -> GoToGoalController object
+        avoid_obstacles_controller -> AvoidObstaclesController object
+        alpha -> float
+        obstacle_vectors -> 2-item list
+        ao_heading_vector -> list
+        gtg_heading_vector -> list
+        blended_heading_vector -> list
+
+    Methods:
+        _print_vars(eP, eI, eD, v, omega)
+
+        __init__(supervisor, kP, kI, kD)
+        update_heading()
+        execute()
+        calculate_fw_heading_vector()
+    """
     def __init__(self, supervisor, kP, kI, kD):
         """Bind the supervisor interface and initialise the controller variables
 
         Keywords:
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
             kP -> float
             kI -> float
             kD -> float
@@ -788,7 +880,8 @@ class GTGAndAOController(Controller):
             kP, kI, kD)
 
         # initialize controllers to blend
-        self.go_to_goal_controller = GoToGoalController(self.supervisor, kP, kI, kD)
+        self.go_to_goal_controller = GoToGoalController(self.supervisor, kP,
+            kI, kD)
         self.avoid_obstacles_controller = AvoidObstaclesController(
             self.supervisor, kP, kI, kD)
 
@@ -861,13 +954,23 @@ class GTGAndAOController(Controller):
 
 #***********************************************************
 class GTGAndAOControllerView(object):
+    """View of GTG, AO and blended GTGAO heading vectors and obstacle boundary.
 
+    Attributes:
+        viewer -> Viewer
+        supervisor -> SupervisorControllerInterface object
+        gtg_and_ao_controller -> GTGAndAOController object
+
+    Methods:
+        __init__(viewer, supervisor)
+        draw_gtg_and_ao_controller_to_frame()
+    """
     def __init__(self, viewer, supervisor):
         """Bind the viewe, supervisor and controller
 
         Keywords:
             viewer -> Viewer
-            supervisor -> SupervisorControllerInterface
+            supervisor -> SupervisorControllerInterface object
         """
         self.viewer = viewer
         self.supervisor = supervisor

@@ -67,7 +67,7 @@ GOAL_MAX_DIST = 2.0         # meters
 MIN_GOAL_CLEARANCE = 0.2    # meters
 
 #custom environment paramters
-GOAL_X_DIST = 2.0
+GOAL_X_DIST = 0.75
 GOAL_Y_DIST = 1.5
 
 #gridline spacing for WorldView
@@ -142,7 +142,7 @@ class World(object):
 
         # create the robot
         robot_1 = Robot(1)
-        #robot_2 = Robot(2,-1.0,3.5,270)
+        #robot_2 = Robot(2,-1.0,0.5,270)
         self.add_robot(robot_1)
         #self.add_robot(robot_2)
 
@@ -480,8 +480,8 @@ class MapManager(object):
     def custom_map(self):
         """Generate a map based on dictionary of obstacle and goal locations"""
         # OBSTACLE PARAMS
-        obs_params = [{'w': 0.5, 'h': 1.2, 'x': 2.0, 'y': 0.0, 'deg': 0},
-                      {'w': 0.3, 'h': 0.6, 'x': 1.0, 'y': 1.0, 'deg': 25}]
+        obs_params = [{'w': 0.5, 'h': 1.2, 'x': 1.0, 'y': 0.0, 'deg': 0},
+                      {'w': 0.3, 'h': 0.6, 'x': 0.5, 'y': 1.0, 'deg': 25}]
 
         # BUILD CUSTOM ELEMENTS
         # generate the goal
@@ -598,6 +598,7 @@ class ObstacleView(object):
         _draw_bounding_circle_to_frame()
     """
     def __init__(self, viewer, obstacle):
+        """Initialises the viewer to use and obstacle to be drawn."""
         self.viewer = viewer
         self.obstacle = obstacle
 
@@ -631,7 +632,7 @@ class RectangleObstacle(Obstacle):
     """Creates a rectangular shaped obstacles
 
     Attributes:
-        pose -> 3-dim array
+        pose -> 3-item list
         width -> float
         height -> float
 
@@ -644,7 +645,7 @@ class RectangleObstacle(Obstacle):
         Keywords:
             width -> float
             height -> float
-            pose -> 3-dim array
+            pose -> 3-item list
         """
         self.pose = pose
         self.width = width
