@@ -246,6 +246,9 @@ class World(object):
             # stop robot motion
             robot.stop_motion()
 
+        #for supervisor in self.supervisors:
+        #    supervisor.stop_motion()
+
 
 #******************************************************************
 class WorldView(object):

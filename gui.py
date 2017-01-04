@@ -177,6 +177,14 @@ class Viewer(object):
         self._button_draw_invisibles.set_image_position(gtk.POS_LEFT)
         self._button_draw_invisibles.connect('clicked', self.on_draw_invisibles)
 
+        # build the load robot toggle button
+        self.load_robot = False  # controls whether invisible world
+                                      #    elements are displayed
+        self._button_load_robot = gtk.Button()
+        self._decorate_load_robot_button_inactive()
+        self._button_load_robot.set_image_position(gtk.POS_LEFT)
+        self._button_load_robot.connect('clicked', self.on_load_robot)
+
         # == lay out the window
 
         # pack the simulation control buttons
@@ -197,13 +205,20 @@ class Viewer(object):
         invisibles_button_box.pack_start(self._button_draw_invisibles, False,
             False)
 
+        # pack the load robot button
+        load_robot_button_box = gtk.HBox()
+        load_robot_button_box.pack_start(self._button_load_robot, False,
+            False)
+
         # align the controls
         sim_controls_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         map_controls_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         invisibles_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        load_robot_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         sim_controls_alignment.add(sim_controls_box)
         map_controls_alignment.add(map_controls_box)
         invisibles_button_alignment.add(invisibles_button_box)
+        load_robot_button_alignment.add(load_robot_button_box)
 
         # create the alert box
         self.alert_box = gtk.Label()
@@ -211,12 +226,21 @@ class Viewer(object):
         # create the world time box
 
         # lay out the simulation view and all of the controls
-        layout_box = gtk.VBox()
-        layout_box.pack_start(self.drawing_area)
-        layout_box.pack_start(self.alert_box, False, False, 5)
-        layout_box.pack_start(sim_controls_alignment, False, False, 5)
-        layout_box.pack_start(map_controls_alignment, False, False, 5)
-        layout_box.pack_start(invisibles_button_alignment, False, False, 5)
+        simulator_box = gtk.VBox()
+        simulator_box.pack_start(self.drawing_area)
+        simulator_box.pack_start(self.alert_box, False, False, 5)
+        simulator_box.pack_start(sim_controls_alignment, False, False, 5)
+        simulator_box.pack_start(map_controls_alignment, False, False, 5)
+        simulator_box.pack_start(invisibles_button_alignment, False, False, 5)
+
+        # lay out the parameter inputs for the simulator
+        parameters_box = gtk.VBox()
+        parameters_box.pack_start(load_robot_button_alignment, False, False, 5)
+
+        # pack the simulator and parameter boxes next to each other
+        layout_box = gtk.HBox()
+        layout_box.pack_start(simulator_box, False, False)
+        layout_box.pack_start(parameters_box, False, False)
 
         # apply the layout
         self.window.add(layout_box)
@@ -311,6 +335,7 @@ class Viewer(object):
         # this ensures multiple calls to play_sim do not speed up
         #    the simulator
         gobject.source_remove(self.sim_event_source)
+        self.world.prev_absolute_time = time()  # reset time to now
         self._run_sim()
         self._control_panel_state_playing()
 
@@ -323,6 +348,8 @@ class Viewer(object):
     def on_step(self, widget):
         """Simulation steps one time period when the step button is pressed."""
         gobject.source_remove(self.sim_event_source)
+        # reset time so that only 1 time period passes per click
+        self.world.prev_absolute_time = time() - self.period
         self._control_panel_state_paused()
         self.step_sim()
 
@@ -401,6 +428,16 @@ class Viewer(object):
             self._decorate_draw_invisibles_button_inactive()
         self.world.draw_world()
 
+    def on_load_robot(self, widget):
+        """Load configuration file for a robot."""
+        # toggle the draw_invisibles state
+        self.load_robot = not self.load_robot
+        if self.load_robot:
+            self._decorate_load_robot_button_active()
+        else:
+            self._decorate_load_robot_button_inactive()
+        self.world.draw_world()
+
     def on_expose(self, widget, event):
         """Exposes the object to the viewer."""
         self.painter.draw_frame(self.current_frame)
@@ -425,6 +462,22 @@ class Viewer(object):
             gtk.ICON_SIZE_BUTTON)
         self._button_draw_invisibles.set_image(draw_invisibles_image)
         self._button_draw_invisibles.set_label('Show Invisibles')
+
+    def _decorate_load_robot_button_active(self):
+        """Updates load robot button text if active."""
+        load_robot_image = gtk.Image()
+        load_robot_image.set_from_stock(gtk.STOCK_REMOVE,
+            gtk.ICON_SIZE_BUTTON)
+        self._button_load_robot.set_image(load_robot_image)
+        self._button_load_robot.set_label('Hide Robot Config')
+
+    def _decorate_load_robot_button_inactive(self):
+        """Updates load robot button text if inactive."""
+        load_robot_image = gtk.Image()
+        load_robot_image.set_from_stock(gtk.STOCK_ADD,
+            gtk.ICON_SIZE_BUTTON)
+        self._button_load_robot.set_image(load_robot_image)
+        self._button_load_robot.set_label('Show Robot Config')
 
 
 #***********************************************************

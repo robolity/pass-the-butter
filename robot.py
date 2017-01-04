@@ -399,8 +399,8 @@ class RobotPhysicalInterface(object):
             self.dir_r = 'F'
 
         #test vel values
-        self.v_l = 100
-        self.v_r = 100
+        #self.v_l = 100
+        #self.v_r = 100
 
         #convert v_l to chars
         char1_l = (self.v_l & 0xFF00) >> 8
@@ -420,10 +420,8 @@ class RobotPhysicalInterface(object):
         to_send = to_send_l + to_send_r
 
         if self.robot.use_serial and self.robot_comm.connected:
-            self.robot_comm.send_lock.acquire()
             self.robot_comm.send_queue.append(to_send)
             #self.robot_comm.send_queue.append(to_send_r)
-            self.robot_comm.send_lock.release()
 
             if debug:
                 print("--------------------------")
@@ -543,9 +541,7 @@ class RobotComm(object):
         # send waiting messages
         send = False
         if(len(self.send_queue) > 0):
-            self.send_lock.acquire()
             to_send = self.send_queue.pop(0)
-            self.send_lock.release()
             send = True
 
         if send:
@@ -559,6 +555,9 @@ class RobotComm(object):
             if debug:
                 print(("sent '{}' to COM{}").format(
                     str(to_send), self.ser_num))
+
+        # read waiting messages
+        print(self.ser.read())
 
 
 #******************************************************

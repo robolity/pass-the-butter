@@ -6,6 +6,11 @@
 - Fix step and pause functionality
 - Add ability to load physical robot parameters from a config file
 
+## 2017-01-04
+- Fix step button so that only 1 time period passes between clicks
+- Fix pause button so that time is reset when simulation resumes
+- Added vertical box to right side of simulator gui for loading physical robot parameters
+
 ## 2016-09-25
 - Changed name of the project to 'Pass the Butter' to reflect the new direction and aim of the project
 - Changed README to describe the project aims and direction going forward

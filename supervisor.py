@@ -195,7 +195,7 @@ class Supervisor(object):
         """Simulate this supervisor running for one time increment."""
         # increment the internal clock time
         self.supervisor_time += dt
-        # print("super time:{}").format(self.supervisor_time)
+        print("super time:{}").format(self.supervisor_time)
 
         # NOTE: for simplicity, we assume that the onboard computer executes
         #       exactly one control loop for every simulation time increment
