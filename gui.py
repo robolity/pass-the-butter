@@ -111,6 +111,8 @@ class Viewer(object):
         # initialize the painter
         self.painter = Painter(self.drawing_area, self.pixels_per_meter)
 
+        # SIMULATOR CONTROL SECTION
+
         # == initialize the buttons
 
         # build the play button
@@ -177,14 +179,6 @@ class Viewer(object):
         self._button_draw_invisibles.set_image_position(gtk.POS_LEFT)
         self._button_draw_invisibles.connect('clicked', self.on_draw_invisibles)
 
-        # build the load robot toggle button
-        self.load_robot = False  # controls whether invisible world
-                                      #    elements are displayed
-        self._button_load_robot = gtk.Button()
-        self._decorate_load_robot_button_inactive()
-        self._button_load_robot.set_image_position(gtk.POS_LEFT)
-        self._button_load_robot.connect('clicked', self.on_load_robot)
-
         # == lay out the window
 
         # pack the simulation control buttons
@@ -205,20 +199,13 @@ class Viewer(object):
         invisibles_button_box.pack_start(self._button_draw_invisibles, False,
             False)
 
-        # pack the load robot button
-        load_robot_button_box = gtk.HBox()
-        load_robot_button_box.pack_start(self._button_load_robot, False,
-            False)
-
         # align the controls
         sim_controls_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         map_controls_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         invisibles_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
-        load_robot_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         sim_controls_alignment.add(sim_controls_box)
         map_controls_alignment.add(map_controls_box)
         invisibles_button_alignment.add(invisibles_button_box)
-        load_robot_button_alignment.add(load_robot_button_box)
 
         # create the alert box
         self.alert_box = gtk.Label()
@@ -233,12 +220,64 @@ class Viewer(object):
         simulator_box.pack_start(map_controls_alignment, False, False, 5)
         simulator_box.pack_start(invisibles_button_alignment, False, False, 5)
 
+        # ROBOT PARAMETERS SECTION
+
+        # == initialize the buttons
+
+        # build the load robot toggle button
+        self.load_robot = False  # controls whether invisible world
+                                      #    elements are displayed
+        self._button_load_robot = gtk.Button()
+        self._decorate_load_robot_button_inactive()
+        self._button_load_robot.set_image_position(gtk.POS_LEFT)
+        self._button_load_robot.connect('clicked', self.on_load_robot)
+
+        # == initialize the text entry boxes
+
+        # Create table for paramters (label, text box, units)
+        _num_parameters = 4  # number of rows in table to fit all parameters
+        self.parameter_table = gtk.Table(_num_parameters, 3, False)
+
+        # initialise the parameter text entry boxes
+        self.r_wheel_radius = gtk.Entry(max=0)
+        self.r_wheel_base_length = gtk.Entry(max=0)
+        self.r_wheel_ticks_per_rev = gtk.Entry(max=0)
+        self.r_max_wheel_drive_rate = gtk.Entry(max=0)
+
+        # add the parameters to the table
+        self.add_parameter_input('Wheel radius', '0.0194', 'mm', 1,
+            self.r_wheel_radius)
+        self.add_parameter_input('Wheel base length', '0.0885', 'mm', 2,
+            self.r_wheel_base_length)
+        self.add_parameter_input('Wheel ticks per rev', '909.7', '', 3,
+            self.r_wheel_ticks_per_rev)
+        self.add_parameter_input('Max wheel drive rate', '100', 'rpm', 4,
+            self.r_max_wheel_drive_rate)
+
+        # == lay out the window
+
+        # pack the load robot button
+        load_robot_button_box = gtk.HBox()
+        load_robot_button_box.pack_start(self._button_load_robot, False, False)
+
+        # pack the robot parameters
+        robot_parameters_box = gtk.HBox()
+        robot_parameters_box.pack_start(self.parameter_table, False, False)
+
+        # align the controls
+        load_robot_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        robot_parameters_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        load_robot_button_alignment.add(load_robot_button_box)
+        robot_parameters_alignment.add(robot_parameters_box)
+
         # lay out the parameter inputs for the simulator
         parameters_box = gtk.VBox()
         parameters_box.pack_start(load_robot_button_alignment, False, False, 5)
+        parameters_box.pack_start(robot_parameters_alignment, False, False, 5)
 
         # pack the simulator and parameter boxes next to each other
         layout_box = gtk.HBox()
+        layout_box.set_spacing(10)
         layout_box.pack_start(simulator_box, False, False)
         layout_box.pack_start(parameters_box, False, False)
 
@@ -247,6 +286,38 @@ class Viewer(object):
 
         # show the simulator window
         self.window.show_all()
+
+    def add_parameter_input(self, label, default_val, unit, row, param_txt):
+        # parameter label
+        _label = gtk.Label(label)
+
+        # parameter text entry box
+        param_txt.set_width_chars(8)
+        param_txt.set_alignment(1.0)
+        param_txt.set_text(default_val)
+
+        # parameter unit
+        _unit = gtk.Label(unit)
+
+        # justify the parameter labels to the right
+        _label_alignment = gtk.Alignment(1.0, 0.0, 0.0, 1.0)
+        _label_alignment.add(_label)
+
+        # add parameter to parameters table
+        self.parameter_table.attach(_label_alignment, 0, 1, row - 1, row)
+        self.parameter_table.attach(param_txt, 1, 2, row - 1, row)
+        self.parameter_table.attach(_unit, 2, 3, row - 1, row)
+
+    def get_robot_parameters(self):
+        self.robot_parameter = []
+        self.robot_parameter.append(float(self.r_wheel_radius.get_text()))
+        self.robot_parameter.append(float(self.r_wheel_base_length.get_text()))
+        self.robot_parameter.append(
+            float(self.r_wheel_ticks_per_rev.get_text()))
+        self.robot_parameter.append(
+            float(self.r_max_wheel_drive_rate.get_text()))
+
+        return self.robot_parameter
 
     def initialise_viewer(self):
         """Initialises the world in the viewer and starts the gui."""

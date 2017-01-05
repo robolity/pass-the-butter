@@ -2,13 +2,16 @@
 *This project does not use semantic versioning*
 
 ## Unreleased
-- Receive proximity sensor and encoder readings from the physical robot
-- Fix step and pause functionality
 - Add ability to load physical robot parameters from a config file
+- Add world time clock to GUI
+- Receive proximity sensor and encoder readings from the physical robot
+
+## 2017-01-05
+- Added text input boxes to GUI for robot parameters - robot parameters are loaded from them during simulator load and reset
 
 ## 2017-01-04
-- Fix step button so that only 1 time period passes between clicks
-- Fix pause button so that time is reset when simulation resumes
+- Fixed step button so that only 1 time period passes between clicks
+- Fixed pause button so that time is reset when simulation resumes
 - Added vertical box to right side of simulator gui for loading physical robot parameters
 
 ## 2016-09-25

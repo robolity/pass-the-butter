@@ -121,7 +121,12 @@ class Robot(object):  # Robot
         stop_motion()
         set_wheel_drive_rates(v_l, v_r)
     """
-    def __init__(self, ID, x=0.0, y=0.0, deg=0.0):
+    def __init__(self, ID, x=0.0, y=0.0, deg=0.0, robot_params=[
+        R_WHEEL_RADIUS,
+        R_WHEEL_BASE_LENGTH,
+        R_MAX_WHEEL_DRIVE_RATE,
+        R_WHEEL_TICKS_PER_REV
+        ]):
         """Bind robot ID and setup robot geometry, location, supervisor & comms.
 
         Keywords:
@@ -130,15 +135,18 @@ class Robot(object):  # Robot
             y -> float
             deg -> float
         """
+
         # robot ID
         self.id = ID
 
         # wheel arrangement
-        self.wheel_radius = R_WHEEL_RADIUS             # meters
-        self.wheel_base_length = R_WHEEL_BASE_LENGTH   # meters
+        self.wheel_radius = robot_params[0]             # meters
+        self.wheel_base_length = robot_params[1]   # meters
+        self.ticks_per_rev = robot_params[2]  # unitless
+        self.max_speed = robot_params[3]  # rpm
 
         # drive rates
-        self.max_speed = R_MAX_WHEEL_DRIVE_RATE * ((2 * pi) / 60)  # rpm 2 rad/s
+        self.max_speed *= ((2 * pi) / 60)  # rpm 2 rad/s
         self.trans_vel_limit = self.max_speed * self.wheel_radius  # m/s
         self.ang_vel_limit = 0.2 * self.max_speed                 # rad/s
 
@@ -155,8 +163,8 @@ class Robot(object):  # Robot
             self.geometry.get_transformation_to_pose(self.pose))
 
         # wheel encoders
-        self.left_wheel_encoder = WheelEncoder(R_WHEEL_TICKS_PER_REV)
-        self.right_wheel_encoder = WheelEncoder(R_WHEEL_TICKS_PER_REV)
+        self.left_wheel_encoder = WheelEncoder(self.ticks_per_rev)
+        self.right_wheel_encoder = WheelEncoder(self.ticks_per_rev)
         self.wheel_encoders = (
             [self.left_wheel_encoder, self.right_wheel_encoder])
 
@@ -174,7 +182,7 @@ class Robot(object):  # Robot
 
         # supervisor
         self.supervisor = Supervisor(RobotSupervisorInterface(self),
-            R_WHEEL_RADIUS, R_WHEEL_BASE_LENGTH, R_WHEEL_TICKS_PER_REV,
+            self.wheel_radius, self.wheel_base_length, self.ticks_per_rev,
             R_SENSOR_POSES, R_SENSOR_MAX_RANGE,
             Pose(self.pose.x, self.pose.y, self.pose.theta))
 
