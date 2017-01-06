@@ -2,9 +2,13 @@
 *This project does not use semantic versioning*
 
 ## Unreleased
-- Add ability to load physical robot parameters from a config file
+- Add the rest of the robot config parameters to the GUI and to the save/load config functions
 - Add world time clock to GUI
 - Receive proximity sensor and encoder readings from the physical robot
+
+## 2017-01-06
+- Added save and load buttons for robot configuration parameters - these save and then restore values into the text entry boxes
+- Updated the UML file for the project (renamed as pass-the-butter.xml) to correctly reflect the class structure of the project code
 
 ## 2017-01-05
 - Added text input boxes to GUI for robot parameters - robot parameters are loaded from them during simulator load and reset
