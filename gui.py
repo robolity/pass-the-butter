@@ -27,6 +27,8 @@
 from math import pi
 from time import time
 
+import pickle
+
 import pygtk
 pygtk.require('2.0')
 import gtk
@@ -224,13 +226,28 @@ class Viewer(object):
 
         # == initialize the buttons
 
-        # build the load robot toggle button
-        self.load_robot = False  # controls whether invisible world
-                                      #    elements are displayed
-        self._button_load_robot = gtk.Button()
-        self._decorate_load_robot_button_inactive()
-        self._button_load_robot.set_image_position(gtk.POS_LEFT)
-        self._button_load_robot.connect('clicked', self.on_load_robot)
+        # build the robot config paramters heading label
+        self._label_robot_config = gtk.Label('Robot Configuration')
+
+        # build the save robot config button
+        self._button_save_robot_config = gtk.Button('Save Config')
+        save_robot_config_image = gtk.Image()
+        save_robot_config_image.set_from_stock(gtk.STOCK_SAVE,
+            gtk.ICON_SIZE_BUTTON)
+        self._button_save_robot_config.set_image(save_robot_config_image)
+        self._button_save_robot_config.set_image_position(gtk.POS_LEFT)
+        self._button_save_robot_config.connect('clicked',
+            self.on_save_robot_config)
+
+        # build the load robot config button
+        self._button_load_robot_config = gtk.Button('Load Config')
+        load_robot_config_image = gtk.Image()
+        load_robot_config_image.set_from_stock(gtk.STOCK_OPEN,
+            gtk.ICON_SIZE_BUTTON)
+        self._button_load_robot_config.set_image(load_robot_config_image)
+        self._button_load_robot_config.set_image_position(gtk.POS_LEFT)
+        self._button_load_robot_config.connect('clicked',
+            self.on_load_robot_config)
 
         # == initialize the text entry boxes
 
@@ -256,22 +273,34 @@ class Viewer(object):
 
         # == lay out the window
 
+        # pack the robot config heading label
+        robot_config_heading_box = gtk.HBox()
+        robot_config_heading_box.pack_start(self._label_robot_config, False,
+            False)
+
         # pack the load robot button
         load_robot_button_box = gtk.HBox()
-        load_robot_button_box.pack_start(self._button_load_robot, False, False)
+        load_robot_button_box.pack_start(self._button_save_robot_config, False,
+            False)
+        load_robot_button_box.pack_start(self._button_load_robot_config, False,
+            False)
 
         # pack the robot parameters
         robot_parameters_box = gtk.HBox()
         robot_parameters_box.pack_start(self.parameter_table, False, False)
 
         # align the controls
+        robot_config_heading_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         load_robot_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         robot_parameters_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        robot_config_heading_alignment.add(robot_config_heading_box)
         load_robot_button_alignment.add(load_robot_button_box)
         robot_parameters_alignment.add(robot_parameters_box)
 
         # lay out the parameter inputs for the simulator
         parameters_box = gtk.VBox()
+        parameters_box.pack_start(robot_config_heading_alignment, False, False,
+            5)
         parameters_box.pack_start(load_robot_button_alignment, False, False, 5)
         parameters_box.pack_start(robot_parameters_alignment, False, False, 5)
 
@@ -318,6 +347,12 @@ class Viewer(object):
             float(self.r_max_wheel_drive_rate.get_text()))
 
         return self.robot_parameter
+
+    def set_robot_parameters(self, param_list):
+        self.r_wheel_radius.set_text(str(param_list[0]))
+        self.r_wheel_base_length.set_text(str(param_list[1]))
+        self.r_wheel_ticks_per_rev.set_text(str(param_list[2]))
+        self.r_max_wheel_drive_rate.set_text(str(param_list[3]))
 
     def initialise_viewer(self):
         """Initialises the world in the viewer and starts the gui."""
@@ -442,7 +477,7 @@ class Viewer(object):
             buttons=(gtk.STOCK_CANCEL, LS_DIALOG_RESPONSE_CANCEL,
                         gtk.STOCK_SAVE, LS_DIALOG_RESPONSE_ACCEPT))
         file_chooser.set_do_overwrite_confirmation(True)
-        file_chooser.set_current_folder('maps')
+        file_chooser.set_current_folder('Maps')
 
         # run the file chooser dialog
         response_id = file_chooser.run()
@@ -463,7 +498,7 @@ class Viewer(object):
             action=gtk.FILE_CHOOSER_ACTION_OPEN,
             buttons=(gtk.STOCK_CANCEL, LS_DIALOG_RESPONSE_CANCEL,
                             gtk.STOCK_OPEN, LS_DIALOG_RESPONSE_ACCEPT))
-        file_chooser.set_current_folder('maps')
+        file_chooser.set_current_folder('Maps')
 
         # run the file chooser dialog
         response_id = file_chooser.run()
@@ -499,15 +534,52 @@ class Viewer(object):
             self._decorate_draw_invisibles_button_inactive()
         self.world.draw_world()
 
-    def on_load_robot(self, widget):
-        """Load configuration file for a robot."""
-        # toggle the draw_invisibles state
-        self.load_robot = not self.load_robot
-        if self.load_robot:
-            self._decorate_load_robot_button_active()
-        else:
-            self._decorate_load_robot_button_inactive()
-        self.world.draw_world()
+    def on_save_robot_config(self, widget):
+        """Saves the robot config parameters to an external file."""
+        # create the file chooser
+        file_chooser = gtk.FileChooserDialog(
+            title='Save Robot Config',
+            parent=self.window,
+            action=gtk.FILE_CHOOSER_ACTION_SAVE,
+            buttons=(gtk.STOCK_CANCEL, LS_DIALOG_RESPONSE_CANCEL,
+                        gtk.STOCK_SAVE, LS_DIALOG_RESPONSE_ACCEPT))
+        file_chooser.set_do_overwrite_confirmation(True)
+        file_chooser.set_current_folder('Robots')
+
+        # run the file chooser dialog
+        response_id = file_chooser.run()
+
+        # handle the user's response
+        if response_id == LS_DIALOG_RESPONSE_CANCEL:
+            file_chooser.destroy()
+        elif response_id == LS_DIALOG_RESPONSE_ACCEPT:
+            with open(file_chooser.get_filename(), 'wb') as _file:
+                pickle.dump(self.get_robot_parameters(), _file)
+            file_chooser.destroy()
+
+    def on_load_robot_config(self, widget):
+        """Load the robot config parameters from an external file."""
+        # create the file chooser
+        file_chooser = gtk.FileChooserDialog(
+            title='Load Robot Config',
+            parent=self.window,
+            action=gtk.FILE_CHOOSER_ACTION_OPEN,
+            buttons=(gtk.STOCK_CANCEL, LS_DIALOG_RESPONSE_CANCEL,
+                            gtk.STOCK_OPEN, LS_DIALOG_RESPONSE_ACCEPT))
+        file_chooser.set_current_folder('Robots')
+
+        # run the file chooser dialog
+        response_id = file_chooser.run()
+
+        # handle the user's response
+        if response_id == LS_DIALOG_RESPONSE_CANCEL:
+            file_chooser.destroy()
+        elif response_id == LS_DIALOG_RESPONSE_ACCEPT:
+            with open(file_chooser.get_filename(), 'rb') as _file:
+                config_list = pickle.load(_file)
+                print config_list
+                self.set_robot_parameters(config_list)
+            file_chooser.destroy()
 
     def on_expose(self, widget, event):
         """Exposes the object to the viewer."""
@@ -533,22 +605,6 @@ class Viewer(object):
             gtk.ICON_SIZE_BUTTON)
         self._button_draw_invisibles.set_image(draw_invisibles_image)
         self._button_draw_invisibles.set_label('Show Invisibles')
-
-    def _decorate_load_robot_button_active(self):
-        """Updates load robot button text if active."""
-        load_robot_image = gtk.Image()
-        load_robot_image.set_from_stock(gtk.STOCK_REMOVE,
-            gtk.ICON_SIZE_BUTTON)
-        self._button_load_robot.set_image(load_robot_image)
-        self._button_load_robot.set_label('Hide Robot Config')
-
-    def _decorate_load_robot_button_inactive(self):
-        """Updates load robot button text if inactive."""
-        load_robot_image = gtk.Image()
-        load_robot_image.set_from_stock(gtk.STOCK_ADD,
-            gtk.ICON_SIZE_BUTTON)
-        self._button_load_robot.set_image(load_robot_image)
-        self._button_load_robot.set_label('Show Robot Config')
 
 
 #***********************************************************
