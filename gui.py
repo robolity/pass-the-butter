@@ -252,24 +252,20 @@ class Viewer(object):
         # == initialize the text entry boxes
 
         # Create table for paramters (label, text box, units)
-        _num_parameters = 4  # number of rows in table to fit all parameters
+        _num_parameters = 8  # number of rows in table to fit all parameters
         self.parameter_table = gtk.Table(_num_parameters, 3, False)
 
-        # initialise the parameter text entry boxes
-        self.r_wheel_radius = gtk.Entry(max=0)
-        self.r_wheel_base_length = gtk.Entry(max=0)
-        self.r_wheel_ticks_per_rev = gtk.Entry(max=0)
-        self.r_max_wheel_drive_rate = gtk.Entry(max=0)
-
         # add the parameters to the table
-        self.add_parameter_input('Wheel radius', '0.0194', 'mm', 1,
-            self.r_wheel_radius)
-        self.add_parameter_input('Wheel base length', '0.0885', 'mm', 2,
-            self.r_wheel_base_length)
-        self.add_parameter_input('Wheel ticks per rev', '909.7', '', 3,
-            self.r_wheel_ticks_per_rev)
-        self.add_parameter_input('Max wheel drive rate', '100', 'rpm', 4,
-            self.r_max_wheel_drive_rate)
+        self.num_robot_params = 0
+        self.add_parameter_input('Wheel radius', '0.0194', 'm', 1)
+        self.add_parameter_input('Wheel base length', '0.0885', 'm', 2)
+        self.add_parameter_input('Wheel ticks per rev', '909.7', '', 3)
+        self.add_parameter_input('Max wheel drive rate', '100', '', 4)
+        self.add_parameter_input('Robot body width', '0.1', 'm', 5)
+        self.add_parameter_input('Robot body length', '0.1', 'm', 6)
+        self.add_parameter_input('Robot payload width', '0.11', 'm', 7)
+        self.add_parameter_input('Robot payload length', '0.13', 'm', 8)
+        self.add_parameter_input('Payload centre offset', '-0.025', 'm', 9)
 
         # == lay out the window
 
@@ -316,14 +312,21 @@ class Viewer(object):
         # show the simulator window
         self.window.show_all()
 
-    def add_parameter_input(self, label, default_val, unit, row, param_txt):
+    def add_parameter_input(self, label, default_val, unit, row):
+        """Add a robot config parameter to the GUI.
+
+        NOTE: The text entry box for each parameter is given a name based on
+        its row so that if the order of parameters is changed later on the
+        parameter names need to be changed when the add_parameter_input()
+        function is called."""
         # parameter label
         _label = gtk.Label(label)
 
         # parameter text entry box
-        param_txt.set_width_chars(8)
-        param_txt.set_alignment(1.0)
-        param_txt.set_text(default_val)
+        setattr(self, 'param_' + str(row), gtk.Entry(max=0))
+        getattr(self, 'param_' + str(row)).set_width_chars(8)
+        getattr(self, 'param_' + str(row)).set_alignment(1.0)
+        getattr(self, 'param_' + str(row)).set_text(default_val)
 
         # parameter unit
         _unit = gtk.Label(unit)
@@ -334,25 +337,27 @@ class Viewer(object):
 
         # add parameter to parameters table
         self.parameter_table.attach(_label_alignment, 0, 1, row - 1, row)
-        self.parameter_table.attach(param_txt, 1, 2, row - 1, row)
+        self.parameter_table.attach(getattr(self, 'param_' + str(row)), 1, 2,
+            row - 1, row)
         self.parameter_table.attach(_unit, 2, 3, row - 1, row)
 
+        # increment param counter
+        self.num_robot_params += 1
+
     def get_robot_parameters(self):
+        """Create an array of robot config parameters from the GUI."""
         self.robot_parameter = []
-        self.robot_parameter.append(float(self.r_wheel_radius.get_text()))
-        self.robot_parameter.append(float(self.r_wheel_base_length.get_text()))
-        self.robot_parameter.append(
-            float(self.r_wheel_ticks_per_rev.get_text()))
-        self.robot_parameter.append(
-            float(self.r_max_wheel_drive_rate.get_text()))
+        for i in range(self.num_robot_params):
+            self.robot_parameter.append(float(
+                getattr(self, 'param_' + str(i + 1)).get_text()))
 
         return self.robot_parameter
 
     def set_robot_parameters(self, param_list):
-        self.r_wheel_radius.set_text(str(param_list[0]))
-        self.r_wheel_base_length.set_text(str(param_list[1]))
-        self.r_wheel_ticks_per_rev.set_text(str(param_list[2]))
-        self.r_max_wheel_drive_rate.set_text(str(param_list[3]))
+        """Load the robot config parameters into the GUI text boxes."""
+        for i in range(self.num_robot_params):
+            getattr(self, 'param_' + str(i + 1)).set_text(
+                str(param_list[i]))
 
     def initialise_viewer(self):
         """Initialises the world in the viewer and starts the gui."""

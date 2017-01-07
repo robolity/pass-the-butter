@@ -2,9 +2,12 @@
 *This project does not use semantic versioning*
 
 ## Unreleased
-- Add the rest of the robot config parameters to the GUI and to the save/load config functions
+- Add sensor parameters to the GUI and the robot save/load functions
 - Add world time clock to GUI
 - Receive proximity sensor and encoder readings from the physical robot
+
+## 2017-01-07
+- Added the rest of the robot config parameters to the GUI and to the save/load config functions
 
 ## 2017-01-06
 - Added save and load buttons for robot configuration parameters - these save and then restore values into the text entry boxes

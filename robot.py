@@ -60,22 +60,19 @@ BAUD_RATE = 115200
 
 # Robot properties for a Zumo 32U4 robot with raspberry pi mounted on top
 
-# Robot's Physical Properties
+# Robot's Default Physical Properties
 R_WHEEL_RADIUS = 0.0194        # meters
 R_WHEEL_BASE_LENGTH = 0.0885   # meters
 R_WHEEL_TICKS_PER_REV = 909.7
-R_MAX_WHEEL_DRIVE_RATE = 100  # rpm
+R_MAX_WHEEL_DRIVE_RATE = 100   # rpm
 
 # Robot's Physical Dimensions in meters
-R_BOTTOM_PLATE = ([[0.050, 0.050],
-                  [-0.050, 0.050],
-                  [-0.050, -0.050],
-                  [0.050, -0.050]])
+R_BODY_WIDTH = 0.10            # meters
+R_BODY_LENGTH = 0.10           # meters
 
-R_TOP_PLATE = ([[0.040, 0.055],
-                  [-0.090, 0.055],
-                  [-0.090, -0.055],
-                  [0.040, -0.055]])
+R_PAYLOAD_WIDTH = 0.11         # meters
+R_PAYLOAD_LENGTH = 0.13        # meters
+R_PAYLOAD_OFFSET = -0.025      # meters
 
 # Sensor read value limits
 R_SENSOR_MIN_READ_VALUE = 18
@@ -125,7 +122,12 @@ class Robot(object):  # Robot
         R_WHEEL_RADIUS,
         R_WHEEL_BASE_LENGTH,
         R_MAX_WHEEL_DRIVE_RATE,
-        R_WHEEL_TICKS_PER_REV
+        R_WHEEL_TICKS_PER_REV,
+        R_BODY_WIDTH,
+        R_BODY_LENGTH,
+        R_PAYLOAD_WIDTH,
+        R_PAYLOAD_LENGTH,
+        R_PAYLOAD_OFFSET
         ]):
         """Bind robot ID and setup robot geometry, location, supervisor & comms.
 
@@ -134,16 +136,36 @@ class Robot(object):  # Robot
             x -> float
             y -> float
             deg -> float
+            robot_params -> list
         """
 
         # robot ID
         self.id = ID
 
-        # wheel arrangement
-        self.wheel_radius = robot_params[0]             # meters
-        self.wheel_base_length = robot_params[1]   # meters
-        self.ticks_per_rev = robot_params[2]  # unitless
-        self.max_speed = robot_params[3]  # rpm
+        # bind robot config parameters
+        self.wheel_radius = robot_params[0]        # metres
+        self.wheel_base_length = robot_params[1]   # metres
+        self.ticks_per_rev = robot_params[2]       # unitless
+        self.max_speed = robot_params[3]           # rpm
+        self.body_width = robot_params[4]          # metres
+        self.body_length = robot_params[5]         # metres
+        self.payload_width = robot_params[6]       # metres
+        self.payload_length = robot_params[7]      # metres
+        self.payload_offset = robot_params[8]      # metres
+
+        self.robot_body = ([[self.body_length / 2, self.body_width / 2],
+            [-self.body_length / 2, self.body_width / 2],
+            [-self.body_length / 2, -self.body_width / 2],
+            [self.body_length / 2, -self.body_width / 2]])
+
+        self.robot_payload = ([[self.payload_length / 2 + self.payload_offset,
+                self.payload_width / 2],
+            [-self.payload_length / 2 + self.payload_offset,
+                self.payload_width / 2],
+            [-self.payload_length / 2 + self.payload_offset,
+                -self.payload_width / 2],
+            [self.payload_length / 2 + self.payload_offset,
+                -self.payload_width / 2]])
 
         # drive rates
         self.max_speed *= ((2 * pi) / 60)  # rpm 2 rad/s
@@ -158,7 +180,7 @@ class Robot(object):  # Robot
         self.pose = Pose(x, y, theta)
 
         # geometry
-        self.geometry = Polygon(R_BOTTOM_PLATE)
+        self.geometry = Polygon(self.robot_body)
         self.global_geometry = (
             self.geometry.get_transformation_to_pose(self.pose))
 
@@ -294,8 +316,8 @@ class RobotView(object):
                                                  alpha=0.5))
         # add decoration
         robot_pos, robot_theta = self.robot.pose.vunpack()
-        robot_top = linalg.rotate_and_translate_vectors(R_TOP_PLATE,
-            robot_theta, robot_pos)
+        robot_top = linalg.rotate_and_translate_vectors(
+            self.robot.robot_payload, robot_theta, robot_pos)
         (self.viewer.current_frame.add_polygons([robot_top],
                                                 color="black",
                                                 alpha=0.5))
