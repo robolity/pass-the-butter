@@ -58,30 +58,6 @@ use_serial = True
 # Serial connectin baud rate
 BAUD_RATE = 115200
 
-# Robot properties for a Zumo 32U4 robot with raspberry pi mounted on top
-
-# Robot's Default Physical Properties
-R_WHEEL_RADIUS = 0.0194        # meters
-R_WHEEL_BASE_LENGTH = 0.0885   # meters
-R_WHEEL_TICKS_PER_REV = 909.7
-R_MAX_WHEEL_DRIVE_RATE = 100   # rpm
-
-# Robot's Physical Dimensions in meters
-R_BODY_WIDTH = 0.10            # meters
-R_BODY_LENGTH = 0.10           # meters
-
-R_PAYLOAD_WIDTH = 0.11         # meters
-R_PAYLOAD_LENGTH = 0.13        # meters
-R_PAYLOAD_OFFSET = -0.025      # meters
-
-# Sensor read value limits
-R_SENSOR_MIN_READ_VALUE = 18
-R_SENSOR_MAX_READ_VALUE = 3960
-
-R_SENSOR_MIN_RANGE = 0.01  # meters
-R_SENSOR_MAX_RANGE = 0.30   # metres
-R_SENSOR_PHI_RANGE = 40    # degrees
-
 R_SENSOR_POSES = ([[0.045, 0.040, 90],  # x, y, theta_degrees
                   [0.045, 0.000, 0],
                   [0.045, -0.040, -90]])
@@ -118,17 +94,7 @@ class Robot(object):  # Robot
         stop_motion()
         set_wheel_drive_rates(v_l, v_r)
     """
-    def __init__(self, ID, x=0.0, y=0.0, deg=0.0, robot_params=[
-        R_WHEEL_RADIUS,
-        R_WHEEL_BASE_LENGTH,
-        R_MAX_WHEEL_DRIVE_RATE,
-        R_WHEEL_TICKS_PER_REV,
-        R_BODY_WIDTH,
-        R_BODY_LENGTH,
-        R_PAYLOAD_WIDTH,
-        R_PAYLOAD_LENGTH,
-        R_PAYLOAD_OFFSET
-        ]):
+    def __init__(self, ID, viewer, x=0.0, y=0.0, deg=0.0):
         """Bind robot ID and setup robot geometry, location, supervisor & comms.
 
         Keywords:
@@ -142,16 +108,27 @@ class Robot(object):  # Robot
         # robot ID
         self.id = ID
 
+        # bind the viewer of the robot
+        self.viewer = viewer
+
         # bind robot config parameters
-        self.wheel_radius = robot_params[0]        # metres
-        self.wheel_base_length = robot_params[1]   # metres
-        self.ticks_per_rev = robot_params[2]       # unitless
-        self.max_speed = robot_params[3]           # rpm
-        self.body_width = robot_params[4]          # metres
-        self.body_length = robot_params[5]         # metres
-        self.payload_width = robot_params[6]       # metres
-        self.payload_length = robot_params[7]      # metres
-        self.payload_offset = robot_params[8]      # metres
+        robot_params = self.viewer.get_robot_parameters()
+
+        self.wheel_radius = robot_params[0][0]        # metres
+        self.wheel_base_length = robot_params[0][1]   # metres
+        self.ticks_per_rev = robot_params[0][2]       # unitless
+        self.max_speed = robot_params[0][3]           # rpm
+        self.body_width = robot_params[0][4]          # metres
+        self.body_length = robot_params[0][5]         # metres
+        self.payload_width = robot_params[0][6]       # metres
+        self.payload_length = robot_params[0][7]      # metres
+        self.payload_offset = robot_params[0][8]      # metres
+
+        self.sensor_min_value = robot_params[0][0]
+        self.sensor_max_value = robot_params[0][1]
+        self.sensor_min_range = robot_params[0][2]
+        self.sensor_max_range = robot_params[0][3]
+        self.sensor_phi_range = robot_params[0][4]
 
         self.robot_body = ([[self.body_length / 2, self.body_width / 2],
             [-self.body_length / 2, self.body_width / 2],
@@ -195,8 +172,8 @@ class Robot(object):  # Robot
         for _pose in R_SENSOR_POSES:
             sensor_pose = Pose(_pose[0], _pose[1], radians(_pose[2]))
             self.proximity_sensors.append(
-                ProximitySensor(self, sensor_pose, R_SENSOR_MIN_RANGE,
-                    R_SENSOR_MAX_RANGE, radians(R_SENSOR_PHI_RANGE)))
+                ProximitySensor(self, sensor_pose, self.sensor_min_range,
+                    self.sensor_max_range, radians(self.sensor_phi_range)))
 
         # dynamics
         self.dynamics = DifferentialDriveDynamics(self.wheel_radius,
@@ -205,7 +182,7 @@ class Robot(object):  # Robot
         # supervisor
         self.supervisor = Supervisor(RobotSupervisorInterface(self),
             self.wheel_radius, self.wheel_base_length, self.ticks_per_rev,
-            R_SENSOR_POSES, R_SENSOR_MAX_RANGE,
+            R_SENSOR_POSES, self.sensor_max_range,
             Pose(self.pose.x, self.pose.y, self.pose.theta))
 
         # physical robot communication
@@ -669,7 +646,7 @@ class ProximitySensor(Sensor):
         self.target_delta = None
 
         # sensor output
-        self.read_value = R_SENSOR_MIN_READ_VALUE
+        self.read_value = self.robot.sensor_min_value
 
     def detect(self, delta):
         """Sets proximity sensor to detect object at dist (delta*max_range)."""
@@ -678,7 +655,7 @@ class ProximitySensor(Sensor):
 
         if delta is None:
             self.target_delta = None
-            self.read_value = R_SENSOR_MIN_READ_VALUE
+            self.read_value = self.robot.sensor_min_value
         else:
             max_range = self.max_range
             min_range = self.min_range
@@ -686,12 +663,12 @@ class ProximitySensor(Sensor):
             d = max_range * delta   # d is the real distance in meters
             if d <= min_range:        # d in [0.00, 0.02]
                 self.target_delta = min_range / max_range
-                self.read_value = R_SENSOR_MAX_READ_VALUE
+                self.read_value = self.robot.sensor_max_value
             else:                     # d in (0.02, 0.20]
                 self.target_delta = delta
-                self.read_value = max(R_SENSOR_MIN_READ_VALUE,
-                    int(ceil(R_SENSOR_MAX_READ_VALUE * e ** (-30 * (d - 0.02))))
-                    )
+                self.read_value = max(self.robot.sensor_min_value,
+                    int(ceil(self.robot.sensor_max_value * e ** (-30 * (
+                        d - 0.02)))))
 
     def read(self):
         """Get this sensor's output."""

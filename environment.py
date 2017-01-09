@@ -142,8 +142,7 @@ class World(object):
 
         # create the robot
         #robot_1 = Robot(1)
-        robot_parameters = self.viewer.get_robot_parameters()
-        robot_2 = Robot(2, -1.0, 0.5, 270, robot_parameters)
+        robot_2 = Robot(2, self.viewer, -1.0, 0.5, 270)
 
         #self.add_robot(robot_1)
         self.add_robot(robot_2)

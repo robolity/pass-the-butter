@@ -251,21 +251,29 @@ class Viewer(object):
 
         # == initialize the text entry boxes
 
-        # Create table for paramters (label, text box, units)
-        _num_parameters = 8  # number of rows in table to fit all parameters
-        self.parameter_table = gtk.Table(_num_parameters, 3, False)
+        # add the parameters to tables
+        # The default values below are the robot properties for a Zumo 32U4
+        # robot with raspberry pi mounted on top
 
-        # add the parameters to the table
-        self.num_robot_params = 0
+        self.num_param_tables = 0  # initialise parameter table counter to 0
+
+        self.add_parameter_table('Physical robot parameters:')
         self.add_parameter_input('Wheel radius', '0.0194', 'm', 1)
-        self.add_parameter_input('Wheel base length', '0.0885', 'm', 2)
-        self.add_parameter_input('Wheel ticks per rev', '909.7', '', 3)
-        self.add_parameter_input('Max wheel drive rate', '100', '', 4)
-        self.add_parameter_input('Robot body width', '0.1', 'm', 5)
-        self.add_parameter_input('Robot body length', '0.1', 'm', 6)
-        self.add_parameter_input('Robot payload width', '0.11', 'm', 7)
-        self.add_parameter_input('Robot payload length', '0.13', 'm', 8)
-        self.add_parameter_input('Payload centre offset', '-0.025', 'm', 9)
+        self.add_parameter_input('Wheel base length', '0.0885', 'm', 1)
+        self.add_parameter_input('Wheel ticks per rev', '909.7', '', 1)
+        self.add_parameter_input('Max wheel drive rate', '100.0', '', 1)
+        self.add_parameter_input('Robot body width', '0.1', 'm', 1)
+        self.add_parameter_input('Robot body length', '0.1', 'm', 1)
+        self.add_parameter_input('Robot payload width', '0.11', 'm', 1)
+        self.add_parameter_input('Robot payload length', '0.13', 'm', 1)
+        self.add_parameter_input('Payload centre offset', '-0.025', 'm', 1)
+
+        self.add_parameter_table('Sensor parameters:')
+        self.add_parameter_input('Sensor min value', '18.0', '', 2)
+        self.add_parameter_input('Sensor max value', '3960.0', '', 2)
+        self.add_parameter_input('Sensor min range', '0.01', '', 2)
+        self.add_parameter_input('Sensor max range', '0.3', '', 2)
+        self.add_parameter_input('Sensor view angle', '40.0', '', 2)
 
         # == lay out the window
 
@@ -282,8 +290,12 @@ class Viewer(object):
             False)
 
         # pack the robot parameters
-        robot_parameters_box = gtk.HBox()
-        robot_parameters_box.pack_start(self.parameter_table, False, False)
+        robot_parameters_box = gtk.VBox()
+        for i in range(self.num_param_tables):
+            robot_parameters_box.pack_start(getattr(self,
+                'param_table_heading_' + str(i + 1)), False, False)
+            robot_parameters_box.pack_start(getattr(self,
+                'param_table_' + str(i + 1)), False, False)
 
         # align the controls
         robot_config_heading_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
@@ -312,52 +324,89 @@ class Viewer(object):
         # show the simulator window
         self.window.show_all()
 
-    def add_parameter_input(self, label, default_val, unit, row):
+    def add_parameter_table(self, heading):
+        """Adds a heading above each parameter table."""
+        # increment table counter
+        self.num_param_tables += 1
+        table_num = self.num_param_tables
+
+        # create param counter for this table
+        setattr(self, 'num_params_' + str(self.num_param_tables), 0)
+
+        # create table heading
+        _heading = gtk.Label(heading)
+
+        # justify the parameter table heading to the left
+        setattr(self, 'param_table_heading_' + str(table_num), gtk.Alignment(
+            0.0, 0.0, 0.0, 1.0))
+        getattr(self, 'param_table_heading_' + str(table_num)).add(_heading)
+        getattr(self, 'param_table_heading_' + str(table_num)).set_padding(10,
+            10, 0, 0)
+
+        # create table
+        setattr(self, 'param_table_' + str(table_num), gtk.Table(1, 3, False))
+
+    def add_parameter_input(self, label, default_val, unit, table):
         """Add a robot config parameter to the GUI.
 
         NOTE: The text entry box for each parameter is given a name based on
         its row so that if the order of parameters is changed later on the
         parameter names need to be changed when the add_parameter_input()
         function is called."""
+
+        # assign table for parameter to be added to
+        _table = getattr(self, 'param_table_' + str(table))
+
         # parameter label
         _label = gtk.Label(label)
-
-        # parameter text entry box
-        setattr(self, 'param_' + str(row), gtk.Entry(max=0))
-        getattr(self, 'param_' + str(row)).set_width_chars(8)
-        getattr(self, 'param_' + str(row)).set_alignment(1.0)
-        getattr(self, 'param_' + str(row)).set_text(default_val)
-
-        # parameter unit
-        _unit = gtk.Label(unit)
 
         # justify the parameter labels to the right
         _label_alignment = gtk.Alignment(1.0, 0.0, 0.0, 1.0)
         _label_alignment.add(_label)
 
-        # add parameter to parameters table
-        self.parameter_table.attach(_label_alignment, 0, 1, row - 1, row)
-        self.parameter_table.attach(getattr(self, 'param_' + str(row)), 1, 2,
-            row - 1, row)
-        self.parameter_table.attach(_unit, 2, 3, row - 1, row)
-
         # increment param counter
-        self.num_robot_params += 1
+        row = getattr(self, 'num_params_' + str(table))
+        row += 1
+        setattr(self, 'num_params_' + str(table), row)
+
+        # parameter text entry box
+        setattr(self, 'param_' + str(table) + '_' + str(row), gtk.Entry(max=0))
+        getattr(self, 'param_' + str(table) + '_' + str(row)).set_width_chars(8)
+        getattr(self, 'param_' + str(table) + '_' + str(row)).set_alignment(1.0)
+        getattr(self, 'param_' + str(table) + '_' + str(row)).set_text(
+            default_val)
+
+        # parameter unit
+        _unit = gtk.Label(unit)
+
+        # add parameter to parameters table
+        _table.attach(_label_alignment, 0, 1, row - 1, row)
+        _table.attach(getattr(self, 'param_' + str(table) + '_' + str(row)), 1,
+            2, row - 1, row)
+        _table.attach(_unit, 2, 3, row - 1, row)
 
     def get_robot_parameters(self):
         """Create an array of robot config parameters from the GUI."""
-        self.robot_parameter = []
-        for i in range(self.num_robot_params):
-            self.robot_parameter.append(float(
-                getattr(self, 'param_' + str(i + 1)).get_text()))
+        self.robot_parameters = []
 
-        return self.robot_parameter
+        for i in range(self.num_param_tables):
+            setattr(self, 'robot_parameters_' + str(i), [])
+            for j in range(getattr(self, 'num_params_' + str(i + 1))):
+                getattr(self, 'robot_parameters_' + str(i)).append(float(
+                    getattr(self,
+                        'param_' + str(i + 1) + '_' + str(j + 1)).get_text()))
+            self.robot_parameters.append(getattr(self,
+                'robot_parameters_' + str(i)))
+
+        return self.robot_parameters
 
     def set_robot_parameters(self, param_list):
         """Load the robot config parameters into the GUI text boxes."""
-        for i in range(self.num_robot_params):
-            getattr(self, 'param_' + str(i + 1)).set_text(
-                str(param_list[i]))
+        for i in range(self.num_param_tables):
+            for j in range(getattr(self, 'num_params_' + str(i + 1))):
+                getattr(self,
+                    'param_' + str(i + 1) + '_' + str(j + 1)).set_text(
+                    str(param_list[i][j]))
 
     def initialise_viewer(self):
         """Initialises the world in the viewer and starts the gui."""
