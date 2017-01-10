@@ -58,10 +58,6 @@ use_serial = True
 # Serial connectin baud rate
 BAUD_RATE = 115200
 
-R_SENSOR_POSES = ([[0.045, 0.040, 90],  # x, y, theta_degrees
-                  [0.045, 0.000, 0],
-                  [0.045, -0.040, -90]])
-
 
 #***********************************************************
 class Robot(object):  # Robot
@@ -124,11 +120,18 @@ class Robot(object):  # Robot
         self.payload_length = robot_params[0][7]      # metres
         self.payload_offset = robot_params[0][8]      # metres
 
-        self.sensor_min_value = robot_params[0][0]
-        self.sensor_max_value = robot_params[0][1]
-        self.sensor_min_range = robot_params[0][2]
-        self.sensor_max_range = robot_params[0][3]
-        self.sensor_phi_range = robot_params[0][4]
+        self.sensor_min_value = robot_params[1][0]    # millivolts
+        self.sensor_max_value = robot_params[1][1]    # millivolts
+        self.sensor_min_range = robot_params[1][2]    # metres
+        self.sensor_max_range = robot_params[1][3]    # metres
+        self.sensor_phi_range = robot_params[1][4]    # metres
+
+        # x, y, theta_degrees
+        self.sensor_poses = ([
+            [robot_params[2][0], robot_params[2][1], robot_params[2][2]],
+            [robot_params[3][0], robot_params[3][1], robot_params[3][2]],
+            [robot_params[4][0], robot_params[4][1], robot_params[4][2]]
+            ])
 
         self.robot_body = ([[self.body_length / 2, self.body_width / 2],
             [-self.body_length / 2, self.body_width / 2],
@@ -169,7 +172,7 @@ class Robot(object):  # Robot
 
         # proximity sensors
         self.proximity_sensors = []
-        for _pose in R_SENSOR_POSES:
+        for _pose in self.sensor_poses:
             sensor_pose = Pose(_pose[0], _pose[1], radians(_pose[2]))
             self.proximity_sensors.append(
                 ProximitySensor(self, sensor_pose, self.sensor_min_range,
@@ -182,7 +185,7 @@ class Robot(object):  # Robot
         # supervisor
         self.supervisor = Supervisor(RobotSupervisorInterface(self),
             self.wheel_radius, self.wheel_base_length, self.ticks_per_rev,
-            R_SENSOR_POSES, self.sensor_max_range,
+            self.sensor_poses, self.sensor_max_range,
             Pose(self.pose.x, self.pose.y, self.pose.theta))
 
         # physical robot communication
@@ -672,6 +675,7 @@ class ProximitySensor(Sensor):
 
     def read(self):
         """Get this sensor's output."""
+        print self.read_value
         return self.read_value
 
     def update_position(self):

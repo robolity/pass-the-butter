@@ -142,7 +142,7 @@ class Supervisor(object):
         # robot representation
         # NOTE: the supervisor does NOT have access to the physical robot,
         #       only the robot's interface
-        self.robot = robot_interface
+        self.robot_interface = robot_interface
 
         # proximity sensor information
         self.proximity_sensor_placements = [Pose(rawpose[0], rawpose[1],
@@ -184,8 +184,8 @@ class Supervisor(object):
         self.goal = goal
 
         # control bounds
-        self.v_max = self.robot.trans_vel_limit
-        self.omega_max = self.robot.ang_vel_limit
+        self.v_max = self.robot_interface.trans_vel_limit
+        self.omega_max = self.robot_interface.ang_vel_limit
 
         # CONTROL OUTPUTS - UNICYCLE
         self.v_output = 0.0
@@ -224,6 +224,10 @@ class Supervisor(object):
         # update the control state
         self.state_machine.update_state()
 
+        # show current state on the GUI
+        self.robot_interface.robot.viewer._label_controller_state.set_text(
+            str(self.state_machine.current_state))
+
     def _update_controller_headings(self):
         """Calculate updated heading vectors for the active controllers."""
         self.go_to_goal_controller.update_heading()
@@ -234,7 +238,7 @@ class Supervisor(object):
     def _update_proximity_sensor_distances(self):
         """Update the distances indicated by the proximity sensors."""
         self.proximity_sensor_distances = [0.02 - (log(readval / 3960.0)) / 30.0
-            for readval in self.robot.read_proximity_sensors()]
+            for readval in self.robot_interface.read_proximity_sensors()]
 
     def _update_odometry(self):
         """Update estimated position of robot using wheel encoder readings."""
@@ -242,7 +246,7 @@ class Supervisor(object):
         N = float(self.wheel_encoder_ticks_per_revolution)
 
         # read the wheel encoder values
-        ticks_left, ticks_right = self.robot.read_wheel_encoders()
+        ticks_left, ticks_right = self.robot_interface.read_wheel_encoders()
 
         # get the difference in ticks since the last iteration
         d_ticks_left = ticks_left - self.prev_ticks_left
@@ -276,7 +280,7 @@ class Supervisor(object):
         # send the drive commands to the robot
         v_l, v_r = self._uni_to_diff(v, omega)
 
-        self.robot.set_wheel_drive_rates(v_l, v_r)
+        self.robot_interface.set_wheel_drive_rates(v_l, v_r)
 
     def _uni_to_diff(self, v, omega):
         """Convert translation vel and angular vel to left and right wheel vel.

@@ -257,7 +257,7 @@ class Viewer(object):
 
         self.num_param_tables = 0  # initialise parameter table counter to 0
 
-        self.add_parameter_table('Physical robot parameters:')
+        self.add_parameter_table('Physical robot parameters:', 3)
         self.add_parameter_input('Wheel radius', '0.0194', 'm', 1)
         self.add_parameter_input('Wheel base length', '0.0885', 'm', 1)
         self.add_parameter_input('Wheel ticks per rev', '909.7', '', 1)
@@ -268,12 +268,31 @@ class Viewer(object):
         self.add_parameter_input('Robot payload length', '0.13', 'm', 1)
         self.add_parameter_input('Payload centre offset', '-0.025', 'm', 1)
 
-        self.add_parameter_table('Sensor parameters:')
-        self.add_parameter_input('Sensor min value', '18.0', '', 2)
-        self.add_parameter_input('Sensor max value', '3960.0', '', 2)
-        self.add_parameter_input('Sensor min range', '0.01', '', 2)
-        self.add_parameter_input('Sensor max range', '0.3', '', 2)
-        self.add_parameter_input('Sensor view angle', '40.0', '', 2)
+        self.add_parameter_table('Sensor parameters:', 3)
+        self.add_parameter_input('Sensor min value', '18.0', 'mV', 2)
+        self.add_parameter_input('Sensor max value', '3960.0', 'mV', 2)
+        self.add_parameter_input('Sensor min range', '0.01', 'm', 2)
+        self.add_parameter_input('Sensor max range', '0.3', 'm', 2)
+        self.add_parameter_input('Sensor view angle', '40.0', 'deg', 2)
+
+        self.add_parameter_table('Sensor 1 position:', 9)
+        self.add_prox_sensor_input('x', '0.045', 'm', 3)
+        self.add_prox_sensor_input('y', '0.040', 'm', 3)
+        self.add_prox_sensor_input('angle', '90.0', 'deg', 3)
+
+        self.add_parameter_table('Sensor 2 position:', 9)
+        self.add_prox_sensor_input('x', '0.045', 'm', 4)
+        self.add_prox_sensor_input('y', '0.000', 'm', 4)
+        self.add_prox_sensor_input('angle', '0.0', 'deg', 4)
+
+        self.add_parameter_table('Sensor 3 position:', 9)
+        self.add_prox_sensor_input('x', '0.045', 'm', 5)
+        self.add_prox_sensor_input('y', '-0.040', 'm', 5)
+        self.add_prox_sensor_input('angle', '-90.0', 'deg', 5)
+
+        # build the robot controller state label
+        self._label_controller_state_heading = gtk.Label('Controller State: ')
+        self._label_controller_state = gtk.Label('')
 
         # == lay out the window
 
@@ -297,13 +316,23 @@ class Viewer(object):
             robot_parameters_box.pack_start(getattr(self,
                 'param_table_' + str(i + 1)), False, False)
 
+        # pack the robot controller label
+        controller_state_box = gtk.HBox()
+        controller_state_box.pack_start(self._label_controller_state_heading,
+            False, False)
+        controller_state_box.pack_start(self._label_controller_state, False,
+            False)
+
         # align the controls
         robot_config_heading_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         load_robot_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         robot_parameters_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        controller_status_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+
         robot_config_heading_alignment.add(robot_config_heading_box)
         load_robot_button_alignment.add(load_robot_button_box)
         robot_parameters_alignment.add(robot_parameters_box)
+        controller_status_alignment.add(controller_state_box)
 
         # lay out the parameter inputs for the simulator
         parameters_box = gtk.VBox()
@@ -311,6 +340,7 @@ class Viewer(object):
             5)
         parameters_box.pack_start(load_robot_button_alignment, False, False, 5)
         parameters_box.pack_start(robot_parameters_alignment, False, False, 5)
+        parameters_box.pack_start(controller_status_alignment, False, False, 5)
 
         # pack the simulator and parameter boxes next to each other
         layout_box = gtk.HBox()
@@ -324,14 +354,14 @@ class Viewer(object):
         # show the simulator window
         self.window.show_all()
 
-    def add_parameter_table(self, heading):
+    def add_parameter_table(self, heading, cols):
         """Adds a heading above each parameter table."""
         # increment table counter
         self.num_param_tables += 1
         table_num = self.num_param_tables
 
         # create param counter for this table
-        setattr(self, 'num_params_' + str(self.num_param_tables), 0)
+        setattr(self, 'num_params_' + str(table_num), 0)
 
         # create table heading
         _heading = gtk.Label(heading)
@@ -345,6 +375,10 @@ class Viewer(object):
 
         # create table
         setattr(self, 'param_table_' + str(table_num), gtk.Table(1, 3, False))
+
+        # if cols is 9, it means this table will store prox sensor values
+        if cols is 9:
+            self.prox_sensors = 0
 
     def add_parameter_input(self, label, default_val, unit, table):
         """Add a robot config parameter to the GUI.
@@ -378,12 +412,60 @@ class Viewer(object):
 
         # parameter unit
         _unit = gtk.Label(unit)
+        _unit_alignment = gtk.Alignment(0.0, 0.0, 0.0, 1.0)
+        _unit_alignment.add(_unit)
 
         # add parameter to parameters table
         _table.attach(_label_alignment, 0, 1, row - 1, row)
         _table.attach(getattr(self, 'param_' + str(table) + '_' + str(row)), 1,
             2, row - 1, row)
-        _table.attach(_unit, 2, 3, row - 1, row)
+        _table.attach(_unit_alignment, 2, 3, row - 1, row)
+
+    def add_prox_sensor_input(self, label, default_val, unit, table):
+        """Add a robot config parameter to the GUI.
+
+        NOTE: The text entry box for each parameter is given a name based on
+        its row so that if the order of parameters is changed later on the
+        parameter names need to be changed when the add_parameter_input()
+        function is called."""
+
+        # assign table for parameter to be added to
+        _table = getattr(self, 'param_table_' + str(table))
+
+        # parameter label
+        _label = gtk.Label(label)
+
+        # justify the parameter labels to the right
+        _label_alignment = gtk.Alignment(1.0, 0.0, 0.0, 1.0)
+        _label_alignment.add(_label)
+        _label_alignment.set_padding(0, 0, 20, 0)
+
+        # increment param counter
+        row = getattr(self, 'num_params_' + str(table))
+        row += 1
+        setattr(self, 'num_params_' + str(table), row)
+
+        # parameter text entry box
+        setattr(self, 'param_' + str(table) + '_' + str(row), gtk.Entry(max=0))
+        getattr(self, 'param_' + str(table) + '_' + str(row)).set_width_chars(8)
+        getattr(self, 'param_' + str(table) + '_' + str(row)).set_alignment(1.0)
+        getattr(self, 'param_' + str(table) + '_' + str(row)).set_text(
+            default_val)
+
+        # parameter unit
+        _unit = gtk.Label(unit)
+        _unit_alignment = gtk.Alignment(0.0, 0.0, 0.0, 1.0)
+        _unit_alignment.add(_unit)
+
+        # add parameter to sensor list
+        _table.attach(_label_alignment,
+            0 + self.prox_sensors * 3, 1 + self.prox_sensors * 3, 0, 1)
+        _table.attach(getattr(self, 'param_' + str(table) + '_' + str(row)),
+            1 + self.prox_sensors * 3, 2 + self.prox_sensors * 3, 0, 1)
+        _table.attach(_unit_alignment,
+            2 + self.prox_sensors * 3, 3 + self.prox_sensors * 3, 0, 1)
+
+        self.prox_sensors += 1
 
     def get_robot_parameters(self):
         """Create an array of robot config parameters from the GUI."""

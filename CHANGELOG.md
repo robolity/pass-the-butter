@@ -2,9 +2,18 @@
 *This project does not use semantic versioning*
 
 ## Unreleased
-- Add sensor parameters to the GUI and the robot save/load functions
+- Change GUI so robot parameters entered through a pop-up window as access to change them isn't needed often
+- Add PID control values to main GUI window
 - Add world time clock to GUI
 - Receive proximity sensor and encoder readings from the physical robot
+
+## 2017-01-10
+- Added the proximity sensor parameters to the GUI
+- Added the current control state to the GUI
+
+## 2017-01-09
+- Added the sensor parameters to the GUI
+- Updated the parameters to be stored in dynamically filled tables and referenced with an id rather than by name to make it easier to add and remove them later
 
 ## 2017-01-07
 - Added the rest of the robot config parameters to the GUI and to the save/load config functions
