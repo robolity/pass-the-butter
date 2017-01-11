@@ -181,6 +181,16 @@ class Viewer(object):
         self._button_draw_invisibles.set_image_position(gtk.POS_LEFT)
         self._button_draw_invisibles.connect('clicked', self.on_draw_invisibles)
 
+        # build the robot parameters toggle button
+        self._button_robot_parameters = gtk.Button('Robot Parameters')
+        robot_parameters_image = gtk.Image()
+        robot_parameters_image.set_from_stock(gtk.STOCK_REFRESH,
+            gtk.ICON_SIZE_BUTTON)
+        self._button_robot_parameters.set_image(random_map_image)
+        self._button_robot_parameters.set_image_position(gtk.POS_LEFT)
+        self._button_robot_parameters.connect('clicked',
+            self.on_robot_parameters)
+
         # == lay out the window
 
         # pack the simulation control buttons
@@ -196,23 +206,39 @@ class Viewer(object):
         map_controls_box.pack_start(self._button_load_map, False, False)
         map_controls_box.pack_start(self._button_random_map, False, False)
 
-        # pack the invisibles button
-        invisibles_button_box = gtk.HBox()
-        invisibles_button_box.pack_start(self._button_draw_invisibles, False,
+        # pack the invisibles and robot parameters button
+        misc_button_box = gtk.HBox()
+        misc_button_box.pack_start(self._button_draw_invisibles, False,
             False)
+        misc_button_box.pack_start(self._button_robot_parameters,
+            False, False)
 
         # align the controls
         sim_controls_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         map_controls_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
-        invisibles_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        misc_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+
         sim_controls_alignment.add(sim_controls_box)
         map_controls_alignment.add(map_controls_box)
-        invisibles_button_alignment.add(invisibles_button_box)
+        misc_button_alignment.add(misc_button_box)
 
         # create the alert box
         self.alert_box = gtk.Label()
 
         # create the world time box
+
+        # build the robot controller state label
+        self._label_controller_state_heading = gtk.Label('Controller State: ')
+        self._label_controller_state = gtk.Label('')
+
+        # pack the robot controller label
+        controller_state_box = gtk.HBox()
+        controller_state_box.pack_start(self._label_controller_state_heading,
+            False, False)
+        controller_state_box.pack_start(self._label_controller_state, False,
+            False)
+        controller_status_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        controller_status_alignment.add(controller_state_box)
 
         # lay out the simulation view and all of the controls
         simulator_box = gtk.VBox()
@@ -220,8 +246,77 @@ class Viewer(object):
         simulator_box.pack_start(self.alert_box, False, False, 5)
         simulator_box.pack_start(sim_controls_alignment, False, False, 5)
         simulator_box.pack_start(map_controls_alignment, False, False, 5)
-        simulator_box.pack_start(invisibles_button_alignment, False, False, 5)
+        simulator_box.pack_start(misc_button_alignment, False, False, 5)
+        simulator_box.pack_start(controller_status_alignment, False, False, 5)
 
+        # ROBOT PARAMETERS SECTION
+
+        # == initialize the robot parameters
+        self.robot_params = {
+            'phys_params': {
+                'wheel_radius': ['Wheel radius', '0.0194', 'm'],
+                'wheel_base_length': ['Wheel base length', '0.0885', 'm'],
+                'ticks_per_rev': ['Wheel ticks per rev', '909.7', ''],
+                'max_speed': ['Max wheel drive rate', '100.0', 'rpm'],
+                'body_width': ['Robot body width', '0.1', 'm'],
+                'body_length': ['Robot body length', '0.1', 'm'],
+                'payload_width': ['Robot payload width', '0.11', 'm'],
+                'payload_length': ['Robot payload length', '0.13', 'm'],
+                'payload_offset': ['Payload centre offset', '-0.025', 'm']},
+            'sensor_params': {
+                'min_value': ['Sensor min value', '18.0', 'mV'],
+                'max_value': ['Sensor max value', '3960.0', 'mV'],
+                'min_range': ['Sensor min range', '0.01', 'm'],
+                'max_range': ['Sensor max range', '0.3', 'm'],
+                'view_angle': ['Sensor view angle', '40.0', 'deg']},
+            'sensor_1_pos': {
+                'x': ['x', '0.045', 'm'],
+                'y': ['y', '0.040', 'm'],
+                'angle': ['angle', '90.0', 'deg']},
+            'sensor_2_pos': {
+                'x': ['x', '0.045', 'm'],
+                'y': ['y', '0.000', 'm'],
+                'angle': ['angle', '0.0', 'deg']},
+            'sensor_3_pos': {
+                'x': ['x', '0.045', 'm'],
+                'y': ['y', '-0.040', 'm'],
+                'angle': ['angle', '-90.0', 'deg']}
+            }
+
+        #self.add_parameter_table('Sensor parameters:', 3)
+        #self.add_parameter_input('Sensor min value', '18.0', 'mV', 2)
+        #self.add_parameter_input('Sensor max value', '3960.0', 'mV', 2)
+        #self.add_parameter_input('Sensor min range', '0.01', 'm', 2)
+        #self.add_parameter_input('Sensor max range', '0.3', 'm', 2)
+        #self.add_parameter_input('Sensor view angle', '40.0', 'deg', 2)
+
+        #self.add_parameter_table('Sensor 1 position:', 9)
+        #self.add_prox_sensor_input('x', '0.045', 'm', 3)
+        #self.add_prox_sensor_input('y', '0.040', 'm', 3)
+        #self.add_prox_sensor_input('angle', '90.0', 'deg', 3)
+
+        #self.add_parameter_table('Sensor 2 position:', 9)
+        #self.add_prox_sensor_input('x', '0.045', 'm', 4)
+        #self.add_prox_sensor_input('y', '0.000', 'm', 4)
+        #self.add_prox_sensor_inpu# pack the robot controller label
+
+        #self.add_parameter_table('Sensor 3 position:', 9)
+        #self.add_prox_sensor_input('x', '0.045', 'm', 5)
+        #self.add_prox_sensor_input('y', '-0.040', 'm', 5)
+        #self.add_prox_sensor_input('angle', '-90.0', 'deg', 5)
+
+        # pack the simulator and parameter boxes next to each other
+        layout_box = gtk.HBox()
+        layout_box.set_spacing(10)
+        layout_box.pack_start(simulator_box, False, False)
+
+        # apply the layout
+        self.window.add(layout_box)
+
+        # show the simulator window
+        self.window.show_all()
+
+    def robot_parameter_window(self):
         # ROBOT PARAMETERS SECTION
 
         # == initialize the buttons
@@ -249,6 +344,16 @@ class Viewer(object):
         self._button_load_robot_config.connect('clicked',
             self.on_load_robot_config)
 
+        # build the apply robot config button
+        self._button_apply_robot_config = gtk.Button('Apply')
+        apply_robot_config_image = gtk.Image()
+        apply_robot_config_image.set_from_stock(gtk.STOCK_SAVE,
+            gtk.ICON_SIZE_BUTTON)
+        self._button_apply_robot_config.set_image(save_robot_config_image)
+        self._button_apply_robot_config.set_image_position(gtk.POS_LEFT)
+        self._button_apply_robot_config.connect('clicked',
+            self.on_apply_robot_config)
+
         # == initialize the text entry boxes
 
         # add the parameters to tables
@@ -258,43 +363,28 @@ class Viewer(object):
         self.num_param_tables = 0  # initialise parameter table counter to 0
 
         self.add_parameter_table('Physical robot parameters:', 3)
-        self.add_parameter_input('Wheel radius', '0.0194', 'm', 1)
-        self.add_parameter_input('Wheel base length', '0.0885', 'm', 1)
-        self.add_parameter_input('Wheel ticks per rev', '909.7', '', 1)
-        self.add_parameter_input('Max wheel drive rate', '100.0', '', 1)
-        self.add_parameter_input('Robot body width', '0.1', 'm', 1)
-        self.add_parameter_input('Robot body length', '0.1', 'm', 1)
-        self.add_parameter_input('Robot payload width', '0.11', 'm', 1)
-        self.add_parameter_input('Robot payload length', '0.13', 'm', 1)
-        self.add_parameter_input('Payload centre offset', '-0.025', 'm', 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['wheel_radius'], 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['wheel_base_length'], 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['ticks_per_rev'], 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['max_speed'], 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['body_width'], 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['body_length'], 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['payload_width'], 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['payload_length'], 1)
+        self.add_parameter_input(
+            self.robot_params['phys_params']['payload_offset'], 1)
 
-        self.add_parameter_table('Sensor parameters:', 3)
-        self.add_parameter_input('Sensor min value', '18.0', 'mV', 2)
-        self.add_parameter_input('Sensor max value', '3960.0', 'mV', 2)
-        self.add_parameter_input('Sensor min range', '0.01', 'm', 2)
-        self.add_parameter_input('Sensor max range', '0.3', 'm', 2)
-        self.add_parameter_input('Sensor view angle', '40.0', 'deg', 2)
+         # == lay out the window
 
-        self.add_parameter_table('Sensor 1 position:', 9)
-        self.add_prox_sensor_input('x', '0.045', 'm', 3)
-        self.add_prox_sensor_input('y', '0.040', 'm', 3)
-        self.add_prox_sensor_input('angle', '90.0', 'deg', 3)
-
-        self.add_parameter_table('Sensor 2 position:', 9)
-        self.add_prox_sensor_input('x', '0.045', 'm', 4)
-        self.add_prox_sensor_input('y', '0.000', 'm', 4)
-        self.add_prox_sensor_input('angle', '0.0', 'deg', 4)
-
-        self.add_parameter_table('Sensor 3 position:', 9)
-        self.add_prox_sensor_input('x', '0.045', 'm', 5)
-        self.add_prox_sensor_input('y', '-0.040', 'm', 5)
-        self.add_prox_sensor_input('angle', '-90.0', 'deg', 5)
-
-        # build the robot controller state label
-        self._label_controller_state_heading = gtk.Label('Controller State: ')
-        self._label_controller_state = gtk.Label('')
-
-        # == lay out the window
+        # pack the robot config heading label # == lay out the window
 
         # pack the robot config heading label
         robot_config_heading_box = gtk.HBox()
@@ -308,6 +398,11 @@ class Viewer(object):
         load_robot_button_box.pack_start(self._button_load_robot_config, False,
             False)
 
+        # pack the load robot button
+        apply_robot_params_button_box = gtk.HBox()
+        apply_robot_params_button_box.pack_start(
+            self._button_apply_robot_config, False, False)
+
         # pack the robot parameters
         robot_parameters_box = gtk.VBox()
         for i in range(self.num_param_tables):
@@ -316,23 +411,18 @@ class Viewer(object):
             robot_parameters_box.pack_start(getattr(self,
                 'param_table_' + str(i + 1)), False, False)
 
-        # pack the robot controller label
-        controller_state_box = gtk.HBox()
-        controller_state_box.pack_start(self._label_controller_state_heading,
-            False, False)
-        controller_state_box.pack_start(self._label_controller_state, False,
-            False)
-
         # align the controls
         robot_config_heading_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
-        load_robot_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
-        robot_parameters_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
-        controller_status_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
-
         robot_config_heading_alignment.add(robot_config_heading_box)
+
+        load_robot_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         load_robot_button_alignment.add(load_robot_button_box)
+
+        robot_parameters_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
         robot_parameters_alignment.add(robot_parameters_box)
-        controller_status_alignment.add(controller_state_box)
+
+        apply_robot_params_button_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        apply_robot_params_button_alignment.add(apply_robot_params_button_box)
 
         # lay out the parameter inputs for the simulator
         parameters_box = gtk.VBox()
@@ -340,19 +430,15 @@ class Viewer(object):
             5)
         parameters_box.pack_start(load_robot_button_alignment, False, False, 5)
         parameters_box.pack_start(robot_parameters_alignment, False, False, 5)
-        parameters_box.pack_start(controller_status_alignment, False, False, 5)
+        parameters_box.pack_start(apply_robot_params_button_alignment, False,
+            False, 5)
 
-        # pack the simulator and parameter boxes next to each other
-        layout_box = gtk.HBox()
-        layout_box.set_spacing(10)
-        layout_box.pack_start(simulator_box, False, False)
-        layout_box.pack_start(parameters_box, False, False)
+        # create robot parameters dialog box
+        self.parameters_window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        self.parameters_window.set_title('Robot Parameters')
+        self.parameters_window.add(parameters_box)
 
-        # apply the layout
-        self.window.add(layout_box)
-
-        # show the simulator window
-        self.window.show_all()
+        self.parameters_window.show_all()
 
     def add_parameter_table(self, heading, cols):
         """Adds a heading above each parameter table."""
@@ -380,7 +466,7 @@ class Viewer(object):
         if cols is 9:
             self.prox_sensors = 0
 
-    def add_parameter_input(self, label, default_val, unit, table):
+    def add_parameter_input(self, param, table):
         """Add a robot config parameter to the GUI.
 
         NOTE: The text entry box for each parameter is given a name based on
@@ -392,7 +478,7 @@ class Viewer(object):
         _table = getattr(self, 'param_table_' + str(table))
 
         # parameter label
-        _label = gtk.Label(label)
+        _label = gtk.Label(param[0])
 
         # justify the parameter labels to the right
         _label_alignment = gtk.Alignment(1.0, 0.0, 0.0, 1.0)
@@ -408,10 +494,10 @@ class Viewer(object):
         getattr(self, 'param_' + str(table) + '_' + str(row)).set_width_chars(8)
         getattr(self, 'param_' + str(table) + '_' + str(row)).set_alignment(1.0)
         getattr(self, 'param_' + str(table) + '_' + str(row)).set_text(
-            default_val)
+            param[1])
 
         # parameter unit
-        _unit = gtk.Label(unit)
+        _unit = gtk.Label(param[2])
         _unit_alignment = gtk.Alignment(0.0, 0.0, 0.0, 1.0)
         _unit_alignment.add(_unit)
 
@@ -469,26 +555,11 @@ class Viewer(object):
 
     def get_robot_parameters(self):
         """Create an array of robot config parameters from the GUI."""
-        self.robot_parameters = []
-
-        for i in range(self.num_param_tables):
-            setattr(self, 'robot_parameters_' + str(i), [])
-            for j in range(getattr(self, 'num_params_' + str(i + 1))):
-                getattr(self, 'robot_parameters_' + str(i)).append(float(
-                    getattr(self,
-                        'param_' + str(i + 1) + '_' + str(j + 1)).get_text()))
-            self.robot_parameters.append(getattr(self,
-                'robot_parameters_' + str(i)))
-
-        return self.robot_parameters
+        return self.robot_params
 
     def set_robot_parameters(self, param_list):
         """Load the robot config parameters into the GUI text boxes."""
-        for i in range(self.num_param_tables):
-            for j in range(getattr(self, 'num_params_' + str(i + 1))):
-                getattr(self,
-                    'param_' + str(i + 1) + '_' + str(j + 1)).set_text(
-                    str(param_list[i][j]))
+        self.robot_params = param_list
 
     def initialise_viewer(self):
         """Initialises the world in the viewer and starts the gui."""
@@ -670,6 +741,16 @@ class Viewer(object):
             self._decorate_draw_invisibles_button_inactive()
         self.world.draw_world()
 
+    def on_robot_parameters(self, widget):
+        """The robot parameters dialog is opened and simulation paused."""
+        # Pause simulation
+        self.world.stop_robots()
+        gobject.source_remove(self.sim_event_source)
+        self._control_panel_state_paused()
+
+        # open robot parameters dialog
+        self.robot_parameter_window()
+
     def on_save_robot_config(self, widget):
         """Saves the robot config parameters to an external file."""
         # create the file chooser
@@ -713,9 +794,28 @@ class Viewer(object):
         elif response_id == LS_DIALOG_RESPONSE_ACCEPT:
             with open(file_chooser.get_filename(), 'rb') as _file:
                 config_list = pickle.load(_file)
-                print config_list
                 self.set_robot_parameters(config_list)
             file_chooser.destroy()
+
+    def on_apply_robot_config(self, widget):
+        """The robot parameters dialog is closed and robot reset."""
+        # save the values in the text boxes to the robot parameter dictionary
+        #self.robot_params = []
+
+        #for i in range(self.num_param_tables):
+            #setattr(self, 'robot_parameters_' + str(i), [])
+            #for j in range(getattr(self, 'num_params_' + str(i + 1))):
+                #getattr(self, 'robot_parameters_' + str(i)).append(float(
+                    #getattr(self,
+                        #'param_' + str(i + 1) + '_' + str(j + 1)).get_text()))
+            #self.robot_parameters.append(getattr(self,
+        #'robot_parameters_' + str(i)))
+
+        # close robot parameters dialog
+        self.parameters_window.destroy()
+
+        # reset the world in the viewer
+        self.world.initialise_world()
 
     def on_expose(self, widget, event):
         """Exposes the object to the viewer."""

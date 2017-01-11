@@ -1,11 +1,17 @@
 # Changelog for Pass the Butter
 *This project does not use semantic versioning*
 
+## Issues
+- Robot parameter values changed in the text entry boxes need to be updated into the gui.robot_params dictionary somehow
+- Robot is not switching controller modes and drives straight into the obstacle
+
 ## Unreleased
-- Change GUI so robot parameters entered through a pop-up window as access to change them isn't needed often
 - Add PID control values to main GUI window
 - Add world time clock to GUI
 - Receive proximity sensor and encoder readings from the physical robot
+
+## 2017-01-11
+- Changed GUI so robot parameters entered through a pop-up window as access to change them isn't needed often
 
 ## 2017-01-10
 - Added the proximity sensor parameters to the GUI
