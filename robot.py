@@ -110,35 +110,30 @@ class Robot(object):  # Robot
         # bind robot config parameters
         robot_params = self.viewer.get_robot_parameters()
 
-        self.wheel_radius = float(robot_params['phys_params']['wheel_radius'][1])  # metres
-        self.wheel_base_length = float(robot_params['phys_params']['wheel_base_length'][1])   # metres
-        self.ticks_per_rev = float(robot_params['phys_params']['ticks_per_rev'][1])       # unitless
-        self.max_speed = float(robot_params['phys_params']['max_speed'][1])          # rpm
-        self.body_width = float(robot_params['phys_params']['body_width'][1])          # metres
-        self.body_length = float(robot_params['phys_params']['body_length'][1])         # metres
-        self.payload_width = float(robot_params['phys_params']['payload_width'][1])       # metres
-        self.payload_length = float(robot_params['phys_params']['payload_length'][1])      # metres
-        self.payload_offset = float(robot_params['phys_params']['payload_offset'][1])     # metres
+        self.wheel_radius = float(robot_params[0][0][1])        # metres
+        self.wheel_base_length = float(robot_params[0][1][1])   # metres
+        self.ticks_per_rev = float(robot_params[0][2][1])       # unitless
+        self.max_speed = float(robot_params[0][3][1])           # rpm
+        self.body_width = float(robot_params[0][4][1])          # metres
+        self.body_length = float(robot_params[0][5][1])         # metres
+        self.payload_width = float(robot_params[0][6][1])       # metres
+        self.payload_length = float(robot_params[0][7][1])      # metres
+        self.payload_offset = float(robot_params[0][8][1])      # metres
 
-        print self.body_length
-
-        self.sensor_min_value = 18.0 #robot_params[1][0]    # millivolts
-        self.sensor_max_value = 3960.0 #robot_params[1][1]    # millivolts
-        self.sensor_min_range = 0.01 #robot_params[1][2]    # metres
-        self.sensor_max_range = 0.3 #robot_params[1][3]    # metres
-        self.sensor_phi_range = 40.0 #robot_params[1][4]    # metres
+        self.sensor_min_value = float(robot_params[1][0][1])    # millivolts
+        self.sensor_max_value = float(robot_params[1][1][1])    # millivolts
+        self.sensor_min_range = float(robot_params[1][2][1])    # metres
+        self.sensor_max_range = float(robot_params[1][3][1])    # metres
+        self.sensor_phi_range = float(robot_params[1][4][1])    # metres
 
         # x, y, theta_degrees
-        #self.sensor_poses = ([
-            #[robot_params[2][0], robot_params[2][1], robot_params[2][2]],
-            #[robot_params[3][0], robot_params[3][1], robot_params[3][2]],
-            #[robot_params[4][0], robot_params[4][1], robot_params[4][2]]
-            #])
-
         self.sensor_poses = ([
-            [0.045, 0.040, 90.0],
-            [0.045, 0.000, 0.0],
-            [0.045, -0.040, -90.0]
+            [float(robot_params[2][0][1]), float(robot_params[2][1][1]),
+                float(robot_params[2][2][1])],
+            [float(robot_params[3][0][1]), float(robot_params[3][1][1]),
+                float(robot_params[3][2][1])],
+            [float(robot_params[4][0][1]), float(robot_params[4][1][1]),
+                float(robot_params[4][2][1])]
             ])
 
         self.robot_body = ([[self.body_length / 2, self.body_width / 2],

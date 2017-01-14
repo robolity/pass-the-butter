@@ -365,13 +365,12 @@ class AvoidObstaclesController(Controller):
         ao_heading_vector = [0.0, 0.0]
 
         # get the distances indicated by the robot's sensor readings
-        sensor_distances = (
-            self.supervisor.proximity_sensor_distances())
+        sensor_distances = (self.supervisor.proximity_sensor_distances())
 
         # calculate the position of detected obstacles and find an
         #    avoidance vector
-        robot_pos, robot_theta = (
-            self.supervisor.estimated_pose().vunpack())
+        robot_pos, robot_theta = (self.supervisor.estimated_pose().vunpack())
+
         for i in range(len(sensor_distances)):
             # calculate the position of the obstacle
             sensor_pos, sensor_theta = (
@@ -430,7 +429,7 @@ class AvoidObstaclesControllerView(object):
             obstacle_vertexes, robot_theta, robot_pos)
         self.viewer.current_frame.add_lines([obstacle_vertexes],
                                             linewidth=0.005,
-                                            color="black",
+                                            color="blue",
                                             alpha=1.0)
 
         # draw the computed avoid-obstacles vector
