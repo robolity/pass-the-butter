@@ -142,7 +142,7 @@ class World(object):
 
         # create the robot
         robot_1 = Robot(1, self.viewer, -1.0, -0.5)
-        robot_2 = Robot(2, self.viewer, -1.0, 0.3, 270)
+        robot_2 = Robot(2, self.viewer, -1.0, 0.5, 270)
 
         self.add_robot(robot_1)
         self.add_robot(robot_2)

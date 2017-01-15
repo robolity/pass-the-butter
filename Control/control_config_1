@@ -1,0 +1,106 @@
+(lp0
+(lp1
+(lp2
+S'Refresh rate'
+p3
+aS'10.0'
+p4
+aS'fps'
+p5
+aaa(lp6
+(lp7
+S'gtg kP'
+p8
+aS'5.0'
+p9
+aS''
+p10
+aa(lp11
+S'gtg kI'
+p12
+aS'0.0'
+p13
+ag10
+aa(lp14
+S'gtg kD'
+p15
+aS'0.0'
+p16
+ag10
+aaa(lp17
+(lp18
+S'ao kP'
+p19
+aS'15.0'
+p20
+ag10
+aa(lp21
+S'ao kI'
+p22
+aS'0.0'
+p23
+ag10
+aa(lp24
+S'ao kD'
+p25
+aS'0.0'
+p26
+ag10
+aaa(lp27
+(lp28
+S'fw kP'
+p29
+aS'10.0'
+p30
+ag10
+aa(lp31
+S'fw kI'
+p32
+aS'0.0'
+p33
+ag10
+aa(lp34
+S'fw kD'
+p35
+aS'0.0'
+p36
+ag10
+aaa(lp37
+(lp38
+S'gta kP'
+p39
+aS'5.0'
+p40
+ag10
+aa(lp41
+S'gta kI'
+p42
+aS'0.0'
+p43
+ag10
+aa(lp44
+S'gta kD'
+p45
+aS'0.0'
+p46
+ag10
+aaa(lp47
+(lp48
+S'gtgao kP'
+p49
+aS'10.0'
+p50
+ag10
+aa(lp51
+S'gtgao kI'
+p52
+aS'0.0'
+p53
+ag10
+aa(lp54
+S'gtgao kD'
+p55
+aS'0.0'
+p56
+ag10
+aaa.
