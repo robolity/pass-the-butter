@@ -2,13 +2,20 @@
 *This project does not use semantic versioning*
 
 ## Issues
-- Robot parameter values changed in the text entry boxes need to be updated into the gui.robot_params dictionary somehow
-- Robot is not switching controller modes and drives straight into the obstacle
+- Save and play button images are not displaying/updating properly
 
 ## Unreleased
-- Add PID control values to main GUI window
+- Control configuration parameters need to be updated to their respective text entry boxes when control config file loaded.
+- Control config parameters need to be linked to the controller class so they are used by the controllers (at the moment they aren't being assigned to the controllers)
 - Add world time clock to GUI
 - Receive proximity sensor and encoder readings from the physical robot
+
+## 2017-01-15
+- Added ability to edit controller PID values and the refresh rate to the main GUI window
+
+## 2017-01-14
+- Changed how robot parameter values are setup so they are a list that can be updated when changes in the text entry boxes are applied
+- Discovered that the avoid obstacles controller wasn't working because it doesn't react to obstacles if it approaches the obstacle's corner.
 
 ## 2017-01-11
 - Changed GUI so robot parameters entered through a pop-up window as access to change them isn't needed often
