@@ -307,8 +307,9 @@ class Viewer(object):
         apply_control_config_image = gtk.Image()
         apply_control_config_image.set_from_stock(gtk.STOCK_APPLY,
             gtk.ICON_SIZE_BUTTON)
-        self._button_apply_control_config.set_image(save_control_config_image)
+        self._button_apply_control_config.set_image(apply_control_config_image)
         self._button_apply_control_config.set_image_position(gtk.POS_LEFT)
+        self._button_apply_control_config.set_sensitive(False)
         self._button_apply_control_config.connect('clicked',
             self.on_apply_control_config)
 
@@ -451,6 +452,99 @@ class Viewer(object):
         # show the simulator window
         self.window.show_all()
 
+    ### Setup of control parameters tables
+
+    def add_control_parameter_table(self, heading):
+        """Adds a heading above each parameter table."""
+        # increment table counter
+        self.num_control_param_tables += 1
+        table_num = self.num_control_param_tables - 1
+
+        # create param counter for this table
+        setattr(self, 'num_control_params_' + str(table_num), 0)
+
+        # create table heading
+        _heading = gtk.Label(heading)
+
+        # justify the parameter table heading to the left
+        setattr(self, 'control_param_table_heading_' + str(table_num),
+            gtk.Alignment(0.0, 0.0, 0.0, 1.0))
+        getattr(self, 'control_param_table_heading_' + str(
+            table_num)).add(_heading)
+        getattr(self, 'control_param_table_heading_' + str(
+            table_num)).set_padding(10, 10, 0, 0)
+
+        # create table
+        setattr(self, 'control_param_table_' + str(table_num), gtk.Table(
+            1, 3, False))
+
+    def add_control_parameter_input(self, param, table):
+        """Add a robot config parameter to the GUI.
+
+        NOTE: The text entry box for each parameter is given a name based on
+        its row so that if the order of parameters is changed later on the
+        parameter names need to be changed when the add_parameter_input()
+        function is called."""
+
+        # assign table for parameter to be added to
+        _table = getattr(self, 'control_param_table_' + str(table))
+
+        # parameter label
+        _label = gtk.Label(param[0])
+
+        # justify the parameter labels to the right
+        _label_alignment = gtk.Alignment(1.0, 0.0, 0.0, 1.0)
+        _label_alignment.add(_label)
+
+        # increment param counter
+        setattr(self, 'num_control_params_' + str(table),
+            getattr(self, 'num_control_params_' + str(table)) + 1)
+        row = getattr(self, 'num_control_params_' + str(table)) - 1
+
+        # parameter text entry box
+        setattr(self, 'control_param_' + str(table) + '_' + str(
+            row), gtk.Entry(max=0))
+        getattr(self, 'control_param_' + str(table) + '_' + str(
+            row)).set_width_chars(8)
+        getattr(self, 'control_param_' + str(table) + '_' + str(
+            row)).set_alignment(1.0)
+        getattr(self, 'control_param_' + str(table) + '_' + str(
+            row)).set_text(param[1])
+        getattr(self, 'control_param_' + str(table) + '_' + str(
+            row)).connect('activate', self.activate_apply_control_config)
+
+        # parameter unit
+        _unit = gtk.Label(param[2])
+        _unit_alignment = gtk.Alignment(0.0, 0.0, 0.0, 1.0)
+        _unit_alignment.add(_unit)
+
+        # add parameter to parameters table
+        _table.attach(_label_alignment, 0, 1, row, row + 1)
+        _table.attach(getattr(self, 'control_param_' + str(table) + '_' + str(
+            row)), 1, 2, row, row + 1)
+        _table.attach(_unit_alignment, 2, 3, row, row + 1)
+
+    def activate_apply_control_config(self, widget):
+        self._button_apply_control_config.set_sensitive(True)
+
+    def get_control_parameters(self):
+        """Create an array of control config parameters from the GUI."""
+        return self.control_params
+
+    def set_control_parameters(self, param_list):
+        """Load the control config parameters into the GUI text boxes."""
+        # save the values from the file into the parameter list
+        self.control_params = param_list
+
+        # save the values from the file into the text boxes
+        for i in range(self.num_control_param_tables):
+            for j in range(getattr(self, 'num_control_params_' + str(i))):
+                self.control_params[i][j][1] = getattr(self,
+                    'control_param_' + str(i) + '_' + str(j)).set_text(
+                        param_list[i][j][1])
+
+    ### Setup of robot parameters window
+
     def robot_parameter_window(self):
         # ROBOT PARAMETERS SECTION
 
@@ -484,8 +578,9 @@ class Viewer(object):
         apply_robot_config_image = gtk.Image()
         apply_robot_config_image.set_from_stock(gtk.STOCK_APPLY,
             gtk.ICON_SIZE_BUTTON)
-        self._button_apply_robot_config.set_image(save_robot_config_image)
+        self._button_apply_robot_config.set_image(apply_robot_config_image)
         self._button_apply_robot_config.set_image_position(gtk.POS_LEFT)
+        self._button_apply_robot_config.set_sensitive(False)
         self._button_apply_robot_config.connect('clicked',
             self.on_apply_robot_config)
 
@@ -645,6 +740,9 @@ class Viewer(object):
             row)).set_alignment(1.0)
         getattr(self, 'robot_param_' + str(table) + '_' + str(
             row)).set_text(param[1])
+        getattr(self, 'robot_param_' + str(table) + '_' + str(
+            row)).connect('activate', self.activate_apply_robot_config)
+
         # parameter unit
         _unit = gtk.Label(param[2])
         _unit_alignment = gtk.Alignment(0.0, 0.0, 0.0, 1.0)
@@ -656,6 +754,9 @@ class Viewer(object):
             row)), 1, 2, row, row + 1)
         _table.attach(_unit_alignment, 2, 3, row, row + 1)
 
+    def activate_apply_robot_config(self, widget):
+        self._button_apply_robot_config.set_sensitive(True)
+
     def get_robot_parameters(self):
         """Create an array of robot config parameters from the GUI."""
         return self.robot_params
@@ -664,80 +765,7 @@ class Viewer(object):
         """Load the robot config parameters into the GUI text boxes."""
         self.robot_params = param_list
 
-    def add_control_parameter_table(self, heading):
-        """Adds a heading above each parameter table."""
-        # increment table counter
-        self.num_control_param_tables += 1
-        table_num = self.num_control_param_tables - 1
-
-        # create param counter for this table
-        setattr(self, 'num_control_params_' + str(table_num), 0)
-
-        # create table heading
-        _heading = gtk.Label(heading)
-
-        # justify the parameter table heading to the left
-        setattr(self, 'control_param_table_heading_' + str(table_num),
-            gtk.Alignment(0.0, 0.0, 0.0, 1.0))
-        getattr(self, 'control_param_table_heading_' + str(
-            table_num)).add(_heading)
-        getattr(self, 'control_param_table_heading_' + str(
-            table_num)).set_padding(10, 10, 0, 0)
-
-        # create table
-        setattr(self, 'control_param_table_' + str(table_num), gtk.Table(
-            1, 3, False))
-
-    def add_control_parameter_input(self, param, table):
-        """Add a robot config parameter to the GUI.
-
-        NOTE: The text entry box for each parameter is given a name based on
-        its row so that if the order of parameters is changed later on the
-        parameter names need to be changed when the add_parameter_input()
-        function is called."""
-
-        # assign table for parameter to be added to
-        _table = getattr(self, 'control_param_table_' + str(table))
-
-        # parameter label
-        _label = gtk.Label(param[0])
-
-        # justify the parameter labels to the right
-        _label_alignment = gtk.Alignment(1.0, 0.0, 0.0, 1.0)
-        _label_alignment.add(_label)
-
-        # increment param counter
-        setattr(self, 'num_control_params_' + str(table),
-            getattr(self, 'num_control_params_' + str(table)) + 1)
-        row = getattr(self, 'num_control_params_' + str(table)) - 1
-
-        # parameter text entry box
-        setattr(self, 'control_param_' + str(table) + '_' + str(
-            row), gtk.Entry(max=0))
-        getattr(self, 'control_param_' + str(table) + '_' + str(
-            row)).set_width_chars(8)
-        getattr(self, 'control_param_' + str(table) + '_' + str(
-            row)).set_alignment(1.0)
-        getattr(self, 'control_param_' + str(table) + '_' + str(
-            row)).set_text(param[1])
-        # parameter unit
-        _unit = gtk.Label(param[2])
-        _unit_alignment = gtk.Alignment(0.0, 0.0, 0.0, 1.0)
-        _unit_alignment.add(_unit)
-
-        # add parameter to parameters table
-        _table.attach(_label_alignment, 0, 1, row, row + 1)
-        _table.attach(getattr(self, 'control_param_' + str(table) + '_' + str(
-            row)), 1, 2, row, row + 1)
-        _table.attach(_unit_alignment, 2, 3, row, row + 1)
-
-    def get_control_parameters(self):
-        """Create an array of control config parameters from the GUI."""
-        return self.control_params
-
-    def set_control_parameters(self, param_list):
-        """Load the control config parameters into the GUI text boxes."""
-        self.control_params = param_list
+    ### Setup of Viewer
 
     def initialise_viewer(self):
         """Initialises the world in the viewer and starts the gui."""
@@ -796,7 +824,7 @@ class Viewer(object):
         try:
             self.world.prev_time = time()
             self.world.step()
-        except GoalRedictionaryachedException:
+        except GoalReachedException:
             self.end_sim('Goal Reached!')
         except CollisionException:
             self.end_sim('Collision!')
@@ -972,6 +1000,8 @@ class Viewer(object):
             for j in range(getattr(self, 'num_control_params_' + str(i))):
                 self.control_params[i][j][1] = getattr(self,
                     'control_param_' + str(i) + '_' + str(j)).get_text()
+
+        self._button_apply_control_config.set_sensitive(False)
 
         # reset the world in the viewer
         self.world.initialise_world()

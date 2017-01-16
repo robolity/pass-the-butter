@@ -2,13 +2,16 @@
 *This project does not use semantic versioning*
 
 ## Issues
-- Save and play button images are not displaying/updating properly
+- Only way to detect that Entry boxes have had their text change is by hitting the Enter key
 
 ## Unreleased
-- Control configuration parameters need to be updated to their respective text entry boxes when control config file loaded.
-- Control config parameters need to be linked to the controller class so they are used by the controllers (at the moment they aren't being assigned to the controllers)
 - Add world time clock to GUI
 - Receive proximity sensor and encoder readings from the physical robot
+
+## 2017-01-16
+- Fixed save and play button images are not displaying/updating properly
+- Control configuration parameters need to be updated to their respective text entry boxes when control config file loaded.
+- Control config parameters need to be linked to the controller class so they are used by the controllers (at the moment they aren't being assigned to the controllers)
 
 ## 2017-01-15
 - Added ability to edit controller PID values and the refresh rate to the main GUI window
