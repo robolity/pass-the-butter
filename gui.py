@@ -226,6 +226,17 @@ class Viewer(object):
         self.alert_box = gtk.Label()
 
         # create the world time box
+        self._label_world_time_heading = gtk.Label('World Time: ')
+        self._label_world_time = gtk.Label('0.00')
+        self._label_world_time_units = gtk.Label('s')
+
+        # pack the world time label
+        world_time_box = gtk.HBox()
+        world_time_box.pack_start(self._label_world_time_heading, False, False)
+        world_time_box.pack_start(self._label_world_time, False, False)
+        world_time_box.pack_start(self._label_world_time_units, False, False)
+        world_time_alignment = gtk.Alignment(0.5, 0.0, 0.0, 1.0)
+        world_time_alignment.add(world_time_box)
 
         # build the robot controller state label
         self._label_controller_state_heading = gtk.Label('Controller State: ')
@@ -243,6 +254,7 @@ class Viewer(object):
         # lay out the simulation view and all of the controls
         simulator_box = gtk.VBox()
         simulator_box.pack_start(self.drawing_area)
+        simulator_box.pack_start(world_time_alignment, False, False, 5)
         simulator_box.pack_start(self.alert_box, False, False, 5)
         simulator_box.pack_start(sim_controls_alignment, False, False, 5)
         simulator_box.pack_start(map_controls_alignment, False, False, 5)

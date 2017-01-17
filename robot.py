@@ -27,7 +27,9 @@
 import serial
 import serial.tools.list_ports
 import time
+import timeit
 from math import pi, radians, cos, sin, ceil, e, fabs
+import atexit
 
 from physics import Polygon, LineSegment, Pose
 from utilities import LinearAlgebra
@@ -156,7 +158,7 @@ class Robot(object):  # Robot
         self.ang_vel_limit = 0.2 * self.max_speed                 # rad/s
 
         if debug:
-            print("SPEED{:.3f}m/s").format(self.trans_vel_limit)
+            print("SPEED {:.3f}m/s").format(self.trans_vel_limit)
 
         # pose
         theta = -pi + ((deg / 360.0) * 2 * pi)
@@ -374,14 +376,14 @@ class RobotPhysicalInterface(object):
 
         # initialise the serial connection to physical robot
         if self.robot.use_serial:
-            self.robot_comm = RobotComm(self.robot)  # robot.id,
-                                           # "Serial{}".format(robot.id))
-            timeout = time.time()
+            self.robot_comm = RobotComm(self.robot, '/V', 'butter')  # robot.id
 
-            # 1 second pause to allow serial connection to establish
-            while not (self.robot_comm.ser_open or
-                    (time.time() - (timeout > 1.0))):
-                time.sleep(0.01)
+            #timeout = time.time()
+
+            ## 1 second pause to allow serial connection to establish
+            #while not (self.robot_comm.ser_open or
+                    #(time.time() - (timeout > 1.0))):
+                #time.sleep(0.01)
 
             if self.robot_comm.ser_open is False:
                 print("Connection to Zumo failed. "
@@ -443,7 +445,8 @@ class RobotPhysicalInterface(object):
                     to_send_r)
 
             # run serial comms to send send_queue to the physical robot
-            self.robot_comm.run()
+            self.robot_comm.send()
+            self.robot_comm.receive()
 
     def read_proximity_sensors(self):
         """Read the proximity sensors of the physical robot."""
@@ -466,34 +469,48 @@ class RobotComm(object):
     Attributes:
         robot -> Robot object
         ser -> Serial object
+        query -> char
+        response -> char
         send_queue -> list
         recieve_queue -> list
         ser_open -> boolean
         ser_num -> int
         serial_sends -> list
         connected -> boolean
+        _tic -> float
+        _toc -> float
 
     Methods:
         __init__(robot)
         connect()
-        run()
+        send()
+        receive(num_bytes)
+        _start_timing()
+        _stop_timing()
     """
-    def __init__(self, robot):
+    def __init__(self, robot, query, response):
         """Binds the robot this serial comm will be for and sets up serial lists
 
         Keywords:
             robot -> Robot object
+            query -> string to get response from correct COM port
+            response -> string expected from the queried COM port
         """
         self.robot = robot
 
         self.ser = None
 
+        self.query = query
+        self.response = response
+
+        # serial command queues
         self.send_queue = []
-        self.recieve_queue = []
+        self.receive_queue = []
 
         self.ser_open = False
         self.ser_num = 0
 
+        # stores what time commands were sent to the controller
         self.serial_sends = []
 
         self.connected = False
@@ -503,6 +520,7 @@ class RobotComm(object):
     def connect(self):
         """Searches through available serial ports for the robot."""
         com_list = []
+
         comports = serial.tools.list_ports.comports()
         for comport in comports:
             for thing in comport:
@@ -519,16 +537,30 @@ class RobotComm(object):
                 #,parity = serial.PARITY_NONE,stopbits = serial.STOPBITS_ONE,
                     #bytesize = serial.EIGHTBITS)
                 ser = serial.Serial(port, baudrate=BAUD_RATE, timeout=None)
-                ser.write('V\n')
-                result = ser.readline()
-                print('Result: {}').format(result)
+
+                time.sleep(0.01)  # Give serial connection time to start up
+
+                # send robot present check character
+                ser.write(self.query)
+
+                # Give serial connection time to respond
+                time.sleep(0.02)
+                print("Port: {} {}").format(port, ser.inWaiting())
+
+                # read waiting messages to look for query answer
+                result = ''
+                while ser.inWaiting() > 0:
+                    result += ser.read(1)
+
+                time.sleep(0.5)  # Give serial query time to reset
 
                 if debug:
-                    print (port)
-                    print (ser)
-                    print ("Result:" + result)
-                if "butter" in result:
-                    print ("Connect Successful! Connected on port:" + port)
+                    if result != '':
+                        print("{} on port {} >> {}").format(ser, port, result)
+
+                if self.response in result:
+                    print("Connect Successful! Connected on port: {}").format(
+                        port)
                     self.ser = ser
                     self.ser.flush()
                     self.ser_open = True
@@ -549,28 +581,60 @@ class RobotComm(object):
                 self.connected = False
                 self.robot.use_serial = False
 
-    def run(self):
-        """Sends serial commands to the robot."""
-        # send waiting messages
-        send = False
-        if(len(self.send_queue) > 0):
-            to_send = self.send_queue.pop(0)
-            send = True
+    def send_command(self, command, wait):
+        """Send a command to the controller via serial"""
 
-        if send:
-            send_time = time.clock() - self.start_time
-            self.serial_sends.append([float(send_time), str(to_send)])
-            time.sleep(0.003)
+        self.comm.send_queue.append(command)
+        self.comm.send()
+
+        # delay after command sent to give time for controller to react
+        time.sleep(wait)
+
+    def receive_command(self, command, wait):
+        """Receive a command to the controller via serial"""
+
+        self.comm.send_queue.append(command)
+        self.comm.send()
+
+        # delay after command sent to give time for controller to react
+        time.sleep(wait)
+
+    def send(self):
+        """Sends serial commands to the controller.
+
+        Check if there is anything in the send queue ready to send.
+        If there are items in the queue, send them.
+        """
+        while(len(self.send_queue) > 0):
+            to_send = self.send_queue.pop(0)
             if self.ser_open:
                 if self.ser.writable:
                     if self.ser_open:
-                        self.ser.write(str(to_send))
+                        self.ser.write(to_send)
             if debug:
+                # print using this method to prevent timeout
                 print(("sent '{}' to COM{}").format(
-                    str(to_send), self.ser_num))
+                    map(hex, bytearray(to_send)),
+                    self.ser_num))
 
-        # read waiting messages
-        print(self.ser.read())
+    def receive(self):
+        """Receives serial command from the controller."""
+        # wait for bytes to be sent from EPOS2 controller
+        time.sleep(0.001)
+
+        result = ''
+        while self.ser.inWaiting() > 0:
+            result = self.ser.read(1)
+            self.receive_queue.append(result)
+
+    def _start_timing(self):
+        """Start clock for timing code execution."""
+        self._tic = timeit.default_timer()
+
+    def _stop_timing(self):
+        """Stop clock for timing code execution and print elapsed time."""
+        self._toc = timeit.default_timer()
+        print("Code execution time: {:.6f}s").format(self._toc - self._tic)
 
 
 #******************************************************

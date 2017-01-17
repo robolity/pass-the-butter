@@ -142,10 +142,10 @@ class World(object):
 
         # create the robot
         robot_1 = Robot(1, self.viewer, -1.0, -0.5)
-        robot_2 = Robot(2, self.viewer, -1.0, 0.5, 270)
+        #robot_2 = Robot(2, self.viewer, -1.0, 0.5, 270)
 
         self.add_robot(robot_1)
-        self.add_robot(robot_2)
+        #self.add_robot(robot_2)
 
         # generate a random environment
         if random:
@@ -195,6 +195,9 @@ class World(object):
 
         # increment world time
         self.world_time += self.current_dt
+
+        self.viewer._label_world_time.set_text('{0:.2f}'.format(
+            self.world_time))
 
         # Flag if current_dt is lagging by more than 5%
         if (self.current_dt > (self.current_dt_target * 1.05) or
