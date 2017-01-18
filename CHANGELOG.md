@@ -5,9 +5,15 @@
 - Only way to detect that Entry boxes have had their text change is by hitting the Enter key
 
 ## Unreleased
-- Add function(s) to receive encoder readings from the physical robot
+- Update function(s) for receiving encoder readings to be more efficient and not slow down simulation
+- Add function to convert / compare received encoder values to previous step encoder values
+- Add function to compare received encoder values with simulation encoder values, and adjust wheel vel to correct so robot matches simulation
 - Add to GUI feedback if robot serial connection successfully found or not
 - Add function(s) to receive proximity sensor readings from the physical robot
+
+## 2017-01-17
+- Added function(s) to receive encoder readings from the physical robot, read encoder value thru RobotPhysicalInterface via serial
+- Changed ZumoDriveControl.ino to send back encoder value of left and right wheel when receive char 'E'
 
 ## 2017-01-16
 - Updated RobotComm to be a bit more efficient (more work still to be done)

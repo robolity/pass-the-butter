@@ -27,7 +27,7 @@
 
 from environment import World
 
-REFRESH_RATE = 15.0  # hertz
+REFRESH_RATE = 5.0  # hertz
 
 
 class Simulator(object):

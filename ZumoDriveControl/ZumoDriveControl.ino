@@ -22,6 +22,9 @@ unsigned int time = 0;
 unsigned int lastDisplayTime = 0;
 unsigned int updateTime = 0;
 
+int16_t countsLeft = 0;
+int16_t countsRight = 0;
+
 //globals for encoders:
 const char encoderErrorLeft[] PROGMEM = "!<c2";
 const char encoderErrorRight[] PROGMEM = "!<e2";
@@ -40,6 +43,16 @@ void processSerial(Stream *serial){
     switch(inChar){
       case 'V':
         serial->println("butter");
+        break;
+      case 'E':
+        //left encoder value
+        serial->print('L');
+        serial->write(encoders.getCountsLeft());
+        //right encoder value
+        serial->print('R');
+        serial->write(encoders.getCountsRight());
+        //encoder values received terminater
+        serial->print('e');
         break;
       case 'L':
         leftSpeedIncoming = true;
@@ -68,11 +81,11 @@ void processSerial(Stream *serial){
             char2 = inChar;
             velL = char1 << 2 | char2;
             
-            lcd.print(char1);
-            lcd.gotoXY(5, 0);
-            lcd.print(char2);
-            lcd.gotoXY(0, 1);
-            lcd.print(velL);
+            //lcd.print(char1);
+            //lcd.gotoXY(5, 0);
+            //lcd.print(char2);
+            //lcd.gotoXY(0, 1);
+            //lcd.print(velL);
             
             char1 = 0;
             char2 = 0;
@@ -103,7 +116,10 @@ void processSerial(Stream *serial){
             rightSpeedIncoming = false;
             rightSpeedReceived = true;
             char1Received = false;
-            //time = micros() - time;            
+            //time = micros() - time;
+
+            //serial->write(countsLeft);
+            //serial->write(countsRight);
           } 
         }
         break;
@@ -143,8 +159,8 @@ void loop() {
       motors.setSpeeds(velL, velR);
       
       //****Reading encoder values
-      int16_t countsLeft = encoders.getCountsLeft();
-      int16_t countsRight = encoders.getCountsRight();
+      countsLeft = encoders.getCountsLeft();
+      countsRight = encoders.getCountsRight();
   
       bool errorLeft = encoders.checkErrorLeft();
       bool errorRight = encoders.checkErrorRight();

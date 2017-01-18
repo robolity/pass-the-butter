@@ -375,24 +375,26 @@ class RobotPhysicalInterface(object):
         self.dir_r = 'F'
 
         # initialise the serial connection to physical robot
-        if self.robot.use_serial:
-            self.robot_comm = RobotComm(self.robot, '/V', 'butter')  # robot.id
+        self.robot_comm = RobotComm(self.robot, '/V', 'butter')  # robot.id
 
-            #timeout = time.time()
+        #timeout = time.time()
 
-            ## 1 second pause to allow serial connection to establish
-            #while not (self.robot_comm.ser_open or
-                    #(time.time() - (timeout > 1.0))):
-                #time.sleep(0.01)
+        ## 1 second pause to allow serial connection to establish
+        #while not (self.robot_comm.ser_open or
+                #(time.time() - (timeout > 1.0))):
+            #time.sleep(0.01)
 
-            if self.robot_comm.ser_open is False:
-                print("Connection to Zumo failed. "
-                    "No robot movement will occur.")
-            else:
-                print("Now connected to Zumo")
+        if self.robot_comm.ser_open is False:
+            print("Connection to Zumo failed. "
+                "No robot movement will occur.")
+        else:
+            print("Now connected to Zumo")
 
     def step(self, final=False):
         """Get wheel drives rates assigned to the robot by the supervisor."""
+        # get wheel encoder values of the robot
+        self.read_wheel_encoders()
+
         self.get_wheel_drive_rates()
         if final:
             # set the wheel rates to zero to stop the robot if final step
@@ -434,32 +436,51 @@ class RobotPhysicalInterface(object):
         # join these commands together
         to_send = to_send_l + to_send_r
 
-        if self.robot.use_serial and self.robot_comm.connected:
-            self.robot_comm.send_queue.append(to_send)
-            #self.robot_comm.send_queue.append(to_send_r)
-
-            if debug:
-                print("--------------------------")
-                print(self.robot_comm.send_queue)
-                print("sending command {} and {} to Zumo").format(to_send_l,
-                    to_send_r)
-
-            # run serial comms to send send_queue to the physical robot
-            self.robot_comm.send()
-            self.robot_comm.receive()
+        self.send_command(to_send)
 
     def read_proximity_sensors(self):
         """Read the proximity sensors of the physical robot."""
-        return [s.read() for s in self.robot.proximity_sensors]
+        pass
 
     def read_wheel_encoders(self):
         """Read the wheel encoders of the physical robot."""
-        return [enc.read() for enc in self.robot.wheel_encoders]
+        self.send_command('E')
+        self.read_command('e')
 
     def get_wheel_drive_rates(self):
         """Apply wheel drive command to the physical robot (rad/s to rpm)."""
         self.v_l = int(self.robot.left_wheel_drive_rate * (60 / (2 * pi)))
         self.v_r = int(self.robot.right_wheel_drive_rate * (60 / (2 * pi)))
+
+    def send_command(self, to_send):
+        if self.robot_comm.connected:
+            self.robot_comm.send_queue.append(to_send)
+
+            if debug:
+                print("--------------------------")
+                print(self.robot_comm.send_queue)
+                print("sending command {} to Zumo").format(to_send)
+
+            # run serial comms to send send_queue to the physical robot
+            self.robot_comm.send()
+        else:
+            print("Serial connection to robot {} lost.").format(self.robot.id)
+
+    def read_command(self, terminator):
+        if self.robot_comm.connected:
+            stream = []
+            # append data stream until encoder terminator reached
+            self.robot_comm.receive(terminator)
+            while(len(self.robot_comm.receive_queue) > 0):
+                received = self.robot_comm.receive_queue.pop(0)
+                stream.append(received)  # add char to the output string
+
+            if debug:
+                print("Received {} chars of data, stream is: {}".format(
+                    len(stream), stream))
+            return stream
+        else:
+            print("Serial connection to robot {} lost.").format(self.robot.id)
 
 
 #******************************************************************
@@ -544,7 +565,7 @@ class RobotComm(object):
                 ser.write(self.query)
 
                 # Give serial connection time to respond
-                time.sleep(0.02)
+                time.sleep(0.03)
                 print("Port: {} {}").format(port, ser.inWaiting())
 
                 # read waiting messages to look for query answer
@@ -556,11 +577,11 @@ class RobotComm(object):
 
                 if debug:
                     if result != '':
-                        print("{} on port {} >> {}").format(ser, port, result)
+                        print("{} on port {} >> {}".format(ser, port, result))
 
                 if self.response in result:
-                    print("Connect Successful! Connected on port: {}").format(
-                        port)
+                    print("Connect Successful! Connected on port: {}".format(
+                        port))
                     self.ser = ser
                     self.ser.flush()
                     self.ser_open = True
@@ -581,24 +602,6 @@ class RobotComm(object):
                 self.connected = False
                 self.robot.use_serial = False
 
-    def send_command(self, command, wait):
-        """Send a command to the controller via serial"""
-
-        self.comm.send_queue.append(command)
-        self.comm.send()
-
-        # delay after command sent to give time for controller to react
-        time.sleep(wait)
-
-    def receive_command(self, command, wait):
-        """Receive a command to the controller via serial"""
-
-        self.comm.send_queue.append(command)
-        self.comm.send()
-
-        # delay after command sent to give time for controller to react
-        time.sleep(wait)
-
     def send(self):
         """Sends serial commands to the controller.
 
@@ -617,14 +620,17 @@ class RobotComm(object):
                     map(hex, bytearray(to_send)),
                     self.ser_num))
 
-    def receive(self):
+    def receive(self, terminator):
         """Receives serial command from the controller."""
         # wait for bytes to be sent from EPOS2 controller
         time.sleep(0.001)
 
         result = ''
+        print("Stream waiting: {}".format(self.ser.inWaiting()))
         while self.ser.inWaiting() > 0:
             result = self.ser.read(1)
+            if result is 'e':
+                break
             self.receive_queue.append(result)
 
     def _start_timing(self):
@@ -881,6 +887,7 @@ class WheelEncoder(Sensor):
         """Initialises the wheel encoder parameters and initial count of 0.
 
         Keywords:
+            robot -> Robot
             ticks_per_rev -> float
         """
         self.ticks_per_rev = ticks_per_rev
