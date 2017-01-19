@@ -2,6 +2,7 @@
 *This project does not use semantic versioning*
 
 ## Issues
+- Conversion of encoder readings from char to decimal isn't correct
 - Only way to detect that Entry boxes have had their text change is by hitting the Enter key
 
 ## Unreleased
@@ -11,11 +12,15 @@
 - Add to GUI feedback if robot serial connection successfully found or not
 - Add function(s) to receive proximity sensor readings from the physical robot
 
-## 2017-01-17
+## 2017-01-19
+- Changed ZumoDriveControl.ino to print encoder value to the LCD (encoder value of previous read is printed, so that when simulator stopped the last encoder reading on the screen matches the last encoder reading printed from the serial read function in the simulator
+- Verified that the encoder readings received as hex via the serial stream matches the encoder readings on the robot (they are split into chars to send them)
+
+## 2017-01-18
 - Added function(s) to receive encoder readings from the physical robot, read encoder value thru RobotPhysicalInterface via serial
 - Changed ZumoDriveControl.ino to send back encoder value of left and right wheel when receive char 'E'
 
-## 2017-01-16
+## 2017-01-17
 - Updated RobotComm to be a bit more efficient (more work still to be done)
 - Added world time clock to GUI
 

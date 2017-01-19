@@ -13,6 +13,8 @@ signed int velR;
 signed int dir = 1;   //direction speed recieved is in
 char char1 = 0; //MSB of speed
 char char2 = 0; //LSB of speed
+unsigned int enc_l = 0;
+unsigned int enc_r = 0;
 boolean leftSpeedIncoming = false;//to indicate to read in motor speed when true
 boolean rightSpeedIncoming = false;
 boolean leftSpeedReceived = false;//to indicate ready to change motor speed to new speeds
@@ -45,12 +47,21 @@ void processSerial(Stream *serial){
         serial->println("butter");
         break;
       case 'E':
+        lcd.clear();
+        lcd.print(enc_l);
+        lcd.gotoXY(0, 1);
+        lcd.print(enc_r);
+      
         //left encoder value
-        serial->print('L');
-        serial->write(encoders.getCountsLeft());
+        enc_l = encoders.getCountsLeft();
+        serial->write((enc_l & 0xFF00) >> 8);
+        serial->write(enc_l & 0x00FF);
+        
         //right encoder value
-        serial->print('R');
-        serial->write(encoders.getCountsRight());
+        enc_r = encoders.getCountsRight();
+        serial->write((enc_r & 0xFF00) >> 8);
+        serial->write(enc_r & 0x00FF);
+
         //encoder values received terminater
         serial->print('e');
         break;
@@ -76,7 +87,7 @@ void processSerial(Stream *serial){
             char1Received = true;
           }else{
             char2 = (char)serial->read();
-            lcd.clear();
+            //lcd.clear();
             
             char2 = inChar;
             velL = char1 << 2 | char2;

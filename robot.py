@@ -228,7 +228,7 @@ class Robot(object):  # Robot
     def stop_motion(self):
         """Step the physical robot with it's final (True) zero speeds."""
         if self.use_serial:
-            self.physical_robot.step(True)
+            self.physical_robot.stop()
 
     def set_wheel_drive_rates(self, v_l, v_r):
         """Set the drive rates (angular vel rad/s) for this robot's wheels."""
@@ -390,16 +390,12 @@ class RobotPhysicalInterface(object):
         else:
             print("Now connected to Zumo")
 
-    def step(self, final=False):
+    def step(self):
         """Get wheel drives rates assigned to the robot by the supervisor."""
         # get wheel encoder values of the robot
         self.read_wheel_encoders()
 
         self.get_wheel_drive_rates()
-        if final:
-            # set the wheel rates to zero to stop the robot if final step
-            self.v_l = 0
-            self.v_r = 0
 
         #the direction values for left
         if (self.v_l < 0):
@@ -414,10 +410,6 @@ class RobotPhysicalInterface(object):
             self.v_r = int(fabs(self.v_r))
         else:
             self.dir_r = 'F'
-
-        #test vel values
-        #self.v_l = 100
-        #self.v_r = 100
 
         #convert v_l to chars
         char1_l = (self.v_l & 0xFF00) >> 8
@@ -438,6 +430,19 @@ class RobotPhysicalInterface(object):
 
         self.send_command(to_send)
 
+    def stop(self):
+        """Set the physical robot wheel speeds to zero to stop the robot."""
+        # command for left wheel - [dir]L###
+        to_send_l = self.dir_l + 'L' + chr(0) + chr(0)
+
+        # command for right wheel - [dir]R###
+        to_send_r = self.dir_r + 'R' + chr(0) + chr(0)
+
+        # join these commands together
+        to_send = to_send_l + to_send_r
+
+        self.send_command(to_send)
+
     def read_proximity_sensors(self):
         """Read the proximity sensors of the physical robot."""
         pass
@@ -445,7 +450,16 @@ class RobotPhysicalInterface(object):
     def read_wheel_encoders(self):
         """Read the wheel encoders of the physical robot."""
         self.send_command('E')
-        self.read_command('e')
+        stream = self.read_command('e')
+
+        # Left encoder value
+        if len(stream) is 4:
+            left = ord(stream[0]) + (255 * (stream[0] is not 0)) + ord(stream[1])
+            right = ord(stream[2]) + (255 * (stream[2] is not 0)) + ord(stream[3])
+
+            print("Encoders: L {}, R{}").format(left, right)
+        else:
+            print("No encoder reading")
 
     def get_wheel_drive_rates(self):
         """Apply wheel drive command to the physical robot (rad/s to rpm)."""
@@ -477,7 +491,7 @@ class RobotPhysicalInterface(object):
 
             if debug:
                 print("Received {} chars of data, stream is: {}".format(
-                    len(stream), stream))
+                    len(stream), list(map(hex, bytearray(stream)))))
             return stream
         else:
             print("Serial connection to robot {} lost.").format(self.robot.id)
@@ -617,7 +631,7 @@ class RobotComm(object):
             if debug:
                 # print using this method to prevent timeout
                 print(("sent '{}' to COM{}").format(
-                    map(hex, bytearray(to_send)),
+                    list(map(hex, bytearray(to_send))),
                     self.ser_num))
 
     def receive(self, terminator):
