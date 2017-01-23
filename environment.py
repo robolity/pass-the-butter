@@ -67,7 +67,7 @@ GOAL_MAX_DIST = 2.0         # meters
 MIN_GOAL_CLEARANCE = 0.2    # meters
 
 #custom environment paramters
-GOAL_X_DIST = 0.75
+GOAL_X_DIST = 0
 GOAL_Y_DIST = 1.5
 
 #gridline spacing for WorldView
@@ -141,7 +141,7 @@ class World(object):
         self.obstacles = []
 
         # create the robot
-        robot_1 = Robot(1, self.viewer, -1.0, -0.5)
+        robot_1 = Robot(1, self.viewer, 0, -0.5, 270)
         #robot_2 = Robot(2, self.viewer, -1.0, 0.5, 270)
 
         self.add_robot(robot_1)

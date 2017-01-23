@@ -206,12 +206,27 @@ class Robot(object):  # Robot
 
     def step_motion(self, dt):
         """Simulate the robot's motion over the given time interval."""
+
         v_l = self.left_wheel_drive_rate
         v_r = self.right_wheel_drive_rate
 
         # apply the robot dynamics to moving parts
         self.dynamics.apply_dynamics(v_l, v_r, dt,
                                       self.pose, self.wheel_encoders)
+
+        # compare simulation encoder value with physical encoder value
+        # get wheel encoder values of the physical robot
+        if self.use_serial:
+            self.physical_robot.read_wheel_encoders()
+
+            self.lost_ticks_l = (
+                self.left_wheel_encoder.tick_count - self.physical_robot.enc_l)
+
+            self.lost_ticks_r = (
+                self.right_wheel_encoder.tick_count - self.physical_robot.enc_r)
+
+            print("Lost ticks: L={}, R={}".format(
+                self.lost_ticks_l, self.lost_ticks_r))
 
         # update global geometry (blue shell)
         self.global_geometry = (
@@ -355,7 +370,7 @@ class RobotPhysicalInterface(object):
 
     Methods:
         __init__(robot)
-        step(final=False)
+        step()
         read_proximity_sensors()
         read_wheel_encoders()
         get_wheel_drive_rates()
@@ -373,6 +388,10 @@ class RobotPhysicalInterface(object):
         self.v_r = 0
         self.dir_l = 'F'
         self.dir_r = 'F'
+
+        # intialise encoders
+        self.enc_l = 0
+        self.enc_r = 0
 
         # initialise the serial connection to physical robot
         self.robot_comm = RobotComm(self.robot, '/V', 'butter')  # robot.id
@@ -392,8 +411,6 @@ class RobotPhysicalInterface(object):
 
     def step(self):
         """Get wheel drives rates assigned to the robot by the supervisor."""
-        # get wheel encoder values of the robot
-        self.read_wheel_encoders()
 
         self.get_wheel_drive_rates()
 
@@ -452,12 +469,16 @@ class RobotPhysicalInterface(object):
         self.send_command('E')
         stream = self.read_command('e')
 
-        # Left encoder value
         if len(stream) is 4:
-            left = ord(stream[0]) + (255 * (stream[0] is not 0)) + ord(stream[1])
-            right = ord(stream[2]) + (255 * (stream[2] is not 0)) + ord(stream[3])
+            # Left encoder value
+            left_msb = ord(stream[0]) << 8
+            self.enc_l = left_msb + ord(stream[1])
 
-            print("Encoders: L {}, R{}").format(left, right)
+            # Right encoder value
+            right_msb = ord(stream[2]) << 8
+            self.enc_r = right_msb + ord(stream[3])
+
+            print("Encoders: L {}, R{}").format(self.enc_l, self.enc_r)
         else:
             print("No encoder reading")
 

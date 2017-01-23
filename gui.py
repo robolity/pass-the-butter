@@ -434,7 +434,7 @@ class Viewer(object):
             [
                 ['Wheel radius', '0.0194', 'm'],
                 ['Wheel base length', '0.0885', 'm'],
-                ['Wheel ticks per rev', '909.7', ''],
+                ['Wheel ticks per rev', '300', ''],
                 ['Max wheel drive rate', '100.0', 'rpm'],
                 ['Robot body width', '0.1', 'm'],
                 ['Robot body length', '0.1', 'm'],
