@@ -175,8 +175,11 @@ class Supervisor(object):
         # state
         # - sensor distances
         self.proximity_sensor_distances = [0.0, 0.0] * len(sensor_placements)
+        self.encoder_values = [0, 0]
+
         # estimated pose
         self.estimated_pose = initial_pose
+
         # current controller
         self.current_controller = self.go_to_goal_controller
 
@@ -240,13 +243,18 @@ class Supervisor(object):
         self.proximity_sensor_distances = [0.02 - (log(readval / 3960.0)) / 30.0
             for readval in self.robot_interface.read_proximity_sensors()]
 
+    def update_encoder_values(self):
+        self.encoder_values = [readval
+            for readval in self.robot_interface.read_wheel_encoders()]
+
     def _update_odometry(self):
         """Update estimated position of robot using wheel encoder readings."""
         R = self.robot_wheel_radius
         N = float(self.wheel_encoder_ticks_per_revolution)
 
         # read the wheel encoder values
-        ticks_left, ticks_right = self.robot_interface.read_wheel_encoders()
+        self.update_encoder_values()
+        ticks_left, ticks_right = self.encoder_values
 
         # get the difference in ticks since the last iteration
         d_ticks_left = ticks_left - self.prev_ticks_left
@@ -459,6 +467,7 @@ class RobotSupervisorInterface(object):
 
     def read_wheel_encoders(self):
         """Read the wheel encoders."""
+        self.robot.physical_robot.read_wheel_encoders()
         return [e.read() for e in self.robot.wheel_encoders]
 
     def set_wheel_drive_rates(self, v_l, v_r):

@@ -205,6 +205,11 @@ class World(object):
             print("Simulation lagging: {:.4f}").format(self.current_dt -
                 self.current_dt_target)
 
+        # NOTE: the supervisors must run last to ensure they are observing
+        #       the "current" world step all of the supervisors
+        for supervisor in self.supervisors:
+            supervisor.step(self.current_dt)
+
         # step all the robots
         for robot in self.robots:
             # step robot motion
@@ -212,11 +217,6 @@ class World(object):
 
         # apply physics interactions
         self.physics.apply_physics()
-
-        # NOTE: the supervisors must run last to ensure they are observing
-        #       the "current" world step all of the supervisors
-        for supervisor in self.supervisors:
-            supervisor.step(self.current_dt)
 
     def add_robot(self, robot):
         """Adds new robot to the robot list."""

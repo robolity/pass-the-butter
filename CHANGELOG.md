@@ -2,15 +2,24 @@
 *This project does not use semantic versioning*
 
 ## Issues
-- Conversion of encoder readings from char to decimal isn't correct
+- The controller heading suddenly goes haywire and the robot goes in circles
 - Only way to detect that Entry boxes have had their text change is by hitting the Enter key
 
 ## Unreleased
+- Investigate why the encoder readings received by the simulator are one cycle behind  being read by the robot
 - Update function(s) for receiving encoder readings to be more efficient and not slow down simulation
-- Add function to convert / compare received encoder values to previous step encoder values
-- Add function to compare received encoder values with simulation encoder values, and adjust wheel vel to correct so robot matches simulation
 - Add to GUI feedback if robot serial connection successfully found or not
 - Add function(s) to receive proximity sensor readings from the physical robot
+
+## 2017-01-29
+- Changed supervisor so reads encoder values from teh physical robot
+- Add function to convert / compare received encoder values to previous step encoder values
+- Add function to compare received encoder values with simulation encoder values, and adjust wheel vel to correct so robot matches simulation
+
+## 2017-01-23
+- Fixed conversion of encoder readings from char to decimal
+- Updated encoder read function so that it is converting the received encoder readings to the correct value from the serial stream
+- Added to robot's step_motion function a comparison between the simulation encoder ticks and the physical robot encoder tick value
 
 ## 2017-01-19
 - Changed ZumoDriveControl.ino to print encoder value to the LCD (encoder value of previous read is printed, so that when simulator stopped the last encoder reading on the screen matches the last encoder reading printed from the serial read function in the simulator

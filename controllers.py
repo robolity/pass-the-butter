@@ -216,6 +216,8 @@ class GoToGoalController(Controller):
         goal = linalg.rotate_and_translate_vector(goal, robot_inv_theta,
                 robot_inv_pos)
 
+        print("goal: {}").format(goal)
+
         return goal
 
 
