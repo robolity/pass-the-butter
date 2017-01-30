@@ -402,7 +402,7 @@ class SupervisorView(object):
         vertexes = self.robot_geometry.vertexes[:]
         vertexes.append(vertexes[0])  # close the drawn polygon
         self.viewer.current_frame.add_lines([vertexes],
-                                            color="black",
+                                            color="dark green",
                                             linewidth=0.0075,
                                             alpha=0.5)
 

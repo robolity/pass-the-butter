@@ -109,7 +109,27 @@ class Robot(object):  # Robot
         # bind the viewer of the robot
         self.viewer = viewer
 
-        # bind robot config parameters
+        # bind the initial pose of the robot
+        self.x = x
+        self.y = y
+        self.deg = deg
+
+        # setup the robot
+        self.setup_robot(self.x, self.y, self.deg)
+
+        # physical robot communication
+        self.use_serial = use_serial
+
+        if self.use_serial:
+            self.physical_robot = RobotPhysicalInterface(self)
+
+        # set wheel drive rates (rad/s)
+        self.left_wheel_drive_rate = 0.0
+        self.right_wheel_drive_rate = 0.0
+
+    def setup_robot(self, x=0.0, y=0.0, deg=0.0):
+        """Apply the robot and sensor config parameters"""
+        # retrieve robot config parameters
         robot_params = self.viewer.get_robot_parameters()
 
         self.wheel_radius = float(robot_params[0][0][1])        # metres
@@ -184,7 +204,7 @@ class Robot(object):  # Robot
                     self.sensor_max_range, radians(self.sensor_phi_range)))
 
         # dynamics
-        self.dynamics = DifferentialDriveDynamics(self.wheel_radius,
+        self.dynamics = DifferentialDriveDynamics(self, self.wheel_radius,
             self.wheel_base_length)
 
         # supervisor
@@ -193,13 +213,6 @@ class Robot(object):  # Robot
             self.sensor_poses, self.sensor_max_range,
             Pose(self.pose.x, self.pose.y, self.pose.theta))
 
-        # physical robot communication
-        self.use_serial = use_serial
-
-        if self.use_serial:
-            self.physical_robot = RobotPhysicalInterface(self)
-
-        ## initialize state
         # set wheel drive rates (rad/s)
         self.left_wheel_drive_rate = 0.0
         self.right_wheel_drive_rate = 0.0
@@ -207,7 +220,7 @@ class Robot(object):  # Robot
     def step_motion(self, dt):
         """Simulate the robot's motion over the given time interval."""
 
-        if self.use_serial:
+        if self.physical_robot.robot_comm.connected:
             # Actual physical robot motion
             v_l = self.left_wheel_drive_rate
             v_r = self.right_wheel_drive_rate
@@ -246,7 +259,7 @@ class Robot(object):  # Robot
 
     def stop_motion(self):
         """Stop the physical robot."""
-        if self.use_serial:
+        if self.physical_robot.robot_comm.connected:
             self.physical_robot.stop()
 
     def set_wheel_drive_rates(self, v_l, v_r):
@@ -502,21 +515,21 @@ class RobotPhysicalInterface(object):
         self.v_l = int(self.robot.left_wheel_drive_rate * (60 / (2 * pi)))
         self.v_r = int(self.robot.right_wheel_drive_rate * (60 / (2 * pi)))
 
-    def calculate_physical_drive_rates(self):
-        self.read_wheel_encoders()
+    #def calculate_physical_drive_rates(self):
+        #self.read_wheel_encoders()
 
-        enc_l_delta = self.enc_l - self.enc_l_prev
-        enc_r_delta = self.enc_r - self.enc_r_prev
+        #enc_l_delta = self.enc_l - self.enc_l_prev
+        #enc_r_delta = self.enc_r - self.enc_r_prev
 
-        # calculate actual distance wheels travelled during step
-        dist_l_delta = (self.enc_l_delta / self.robot.ticks_per_rev) * (
-            2 * pi * self.robot.wheel_radius)
-        dist_r_delta = (self.enc_r_delta / self.robot.ticks_per_rev) * (
-            2 * pi * self.robot.wheel_radius)
+        ## calculate actual distance wheels travelled during step
+        #dist_l_delta = (self.enc_l_delta / self.robot.ticks_per_rev) * (
+            #2 * pi * self.robot.wheel_radius)
+        #dist_r_delta = (self.enc_r_delta / self.robot.ticks_per_rev) * (
+            #2 * pi * self.robot.wheel_radius)
 
-        # store encoder values for next step iteration
-        self.enc_l_prev = self.enc_l
-        self.enc_r_prev = self.enc_r
+        ## store encoder values for next step iteration
+        #self.enc_l_prev = self.enc_l
+        #self.enc_r_prev = self.enc_r
 
     def send_command(self, to_send):
         if self.robot_comm.connected:
@@ -986,13 +999,14 @@ class DifferentialDriveDynamics(object):
         __init(wheel_radius, wheel_base_length)
         apply_dynamics(v_l, v_r, dt, pose, wheel_encoders)
     """
-    def __init__(self, wheel_radius, wheel_base_length):
+    def __init__(self, robot, wheel_radius, wheel_base_length):
         """Applies the wheel radius and wheel base length of the robot.
 
         Keywords:
             wheel_radius -> float
             wheel_base_length -> float
         """
+        self.robot = robot
         self.wheel_radius = wheel_radius
         self.wheel_base_length = wheel_base_length
 
@@ -1026,5 +1040,7 @@ class DifferentialDriveDynamics(object):
         # update the state of the moving parts
         pose.supdate(new_x, new_y, new_theta)
         #print("New y: {}").format(new_y)
-        #wheel_encoders[0].step_revolutions(revolutions_left)
-        #wheel_encoders[1].step_revolutions(revolutions_right)
+
+        if not self.robot.physical_robot.robot_comm.connected:
+            wheel_encoders[0].step_revolutions(revolutions_left)
+            wheel_encoders[1].step_revolutions(revolutions_right)

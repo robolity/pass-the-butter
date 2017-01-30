@@ -890,7 +890,7 @@ class Viewer(object):
         gobject.source_remove(self.sim_event_source)
         self._control_panel_state_init()
         # reset the world in the viewer
-        self.world.initialise_world()
+        self.world.reset_world()
 
     def on_save_map(self, widget):
         """Saves the obstacle, goal and robot positions to an external file."""

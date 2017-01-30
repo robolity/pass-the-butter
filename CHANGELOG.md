@@ -11,6 +11,10 @@
 - Add to GUI feedback if robot serial connection successfully found or not
 - Add function(s) to receive proximity sensor readings from the physical robot
 
+## 2017-01-30
+- Unsuccessful trying to find the reason for the controller heading going haywire
+- CHanged so that if robot isn't connected, simulated encoder readings are used instead (with simulated encoder the controller heading is stable)
+
 ## 2017-01-29
 - Changed supervisor so reads encoder values from teh physical robot
 - Add function to convert / compare received encoder values to previous step encoder values

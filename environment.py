@@ -141,7 +141,7 @@ class World(object):
         self.obstacles = []
 
         # create the robot
-        robot_1 = Robot(1, self.viewer, 0, -0.5, 270)
+        robot_1 = Robot(1, self.viewer, 0.5, 0.5, 270)
         #robot_2 = Robot(2, self.viewer, -1.0, 0.5, 270)
 
         self.add_robot(robot_1)
@@ -160,6 +160,18 @@ class World(object):
 
         # create the world view
         self.world_view = WorldView(self, self.viewer)
+
+        # render the initial world
+        self.draw_world()
+
+    def reset_world(self):
+        # initialize world time
+        self.world_time = 0.0  # seconds
+        self.prev_absolute_time = time()
+
+        # initialize lists of world objects
+        for robot in self.robots:
+            robot.setup_robot(robot.x, robot.y, robot.deg)
 
         # render the initial world
         self.draw_world()
