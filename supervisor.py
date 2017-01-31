@@ -56,7 +56,7 @@ R_TRANS_VEL_LIMIT = 0.3148     # m/s
 R_ANG_VEL_LIMIT = 2.2763       # rad/s
 
 #PID values
-gtg_kP = 5.0
+gtg_kP = 2.0
 gtg_kI = 0.0
 gtg_kD = 0.0
 

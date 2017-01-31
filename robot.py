@@ -29,7 +29,6 @@ import serial.tools.list_ports
 import time
 import timeit
 from math import pi, radians, cos, sin, ceil, e, fabs
-import atexit
 
 from physics import Polygon, LineSegment, Pose
 from utilities import LinearAlgebra
@@ -123,10 +122,6 @@ class Robot(object):  # Robot
         if self.use_serial:
             self.physical_robot = RobotPhysicalInterface(self)
 
-        # set wheel drive rates (rad/s)
-        self.left_wheel_drive_rate = 0.0
-        self.right_wheel_drive_rate = 0.0
-
     def setup_robot(self, x=0.0, y=0.0, deg=0.0):
         """Apply the robot and sensor config parameters"""
         # retrieve robot config parameters
@@ -219,43 +214,21 @@ class Robot(object):  # Robot
 
     def step_motion(self, dt):
         """Simulate the robot's motion over the given time interval."""
+        # apply the supervisor velocities & encoder values -> determine new pose
+        self.dynamics.apply_dynamics(self.left_wheel_drive_rate,
+            self.right_wheel_drive_rate, dt, self.pose, self.wheel_encoders)
 
+        # update global geometry (blue shell)
+        self.global_geometry = (
+            self.geometry.get_transformation_to_pose(self.pose))
+
+        # update the position all of proximity the sensors
+        for proximity_sensor in self.proximity_sensors:
+            proximity_sensor.update_position()
+
+        # send wheel speeds to physical robot and retrieve sensor values
         if self.physical_robot.robot_comm.connected:
-            # Actual physical robot motion
-            v_l = self.left_wheel_drive_rate
-            v_r = self.right_wheel_drive_rate
-
-            # apply the robot dynamics to moving parts
-            self.dynamics.apply_dynamics(v_l, v_r, dt,
-                                          self.pose, self.wheel_encoders)
-
-            # update global geometry (blue shell)
-            self.global_geometry = (
-                self.geometry.get_transformation_to_pose(self.pose))
-
-            # update all of the sensors
-            for proximity_sensor in self.proximity_sensors:
-                proximity_sensor.update_position()
-
-            # send wheel speeds to physical robot and retrieve sensor values
             self.physical_robot.step()
-
-        else:
-            # Simulated robot motion
-            v_l = self.left_wheel_drive_rate
-            v_r = self.right_wheel_drive_rate
-
-            # apply the robot dynamics to moving parts
-            self.dynamics.apply_dynamics(v_l, v_r, dt,
-                                          self.pose, self.wheel_encoders)
-
-            # update global geometry (blue shell)
-            self.global_geometry = (
-                self.geometry.get_transformation_to_pose(self.pose))
-
-            # update all of the sensors
-            for proximity_sensor in self.proximity_sensors:
-                proximity_sensor.update_position()
 
     def stop_motion(self):
         """Stop the physical robot."""
@@ -265,13 +238,15 @@ class Robot(object):  # Robot
     def set_wheel_drive_rates(self, v_l, v_r):
         """Set the drive rates (angular vel rad/s) for this robot's wheels."""
         # simulate physical limit on drive motors
-        v_l = min(self.max_speed, v_l)
-        v_r = min(self.max_speed, v_r)
+        self.left_wheel_drive_rate = min(self.max_speed, v_l)
+        self.right_wheel_drive_rate = min(self.max_speed, v_r)
 
-        # set drive rates
-        self.left_wheel_drive_rate = v_l
-        self.right_wheel_drive_rate = v_r
-        print("Set speeds are v_l = {}, v_r = {}").format(v_l, v_r)
+        print("left_wheel_drive_rate = {}, right_wheel_drive_rate = {}").format(
+            self.left_wheel_drive_rate, self.right_wheel_drive_rate)
+
+    def read_encoders(self):
+
+        self.physical_robot.read_wheel_encoders()
 
 
 #******************************************************
@@ -514,22 +489,6 @@ class RobotPhysicalInterface(object):
         """Apply wheel drive command to the physical robot (rad/s to rpm)."""
         self.v_l = int(self.robot.left_wheel_drive_rate * (60 / (2 * pi)))
         self.v_r = int(self.robot.right_wheel_drive_rate * (60 / (2 * pi)))
-
-    #def calculate_physical_drive_rates(self):
-        #self.read_wheel_encoders()
-
-        #enc_l_delta = self.enc_l - self.enc_l_prev
-        #enc_r_delta = self.enc_r - self.enc_r_prev
-
-        ## calculate actual distance wheels travelled during step
-        #dist_l_delta = (self.enc_l_delta / self.robot.ticks_per_rev) * (
-            #2 * pi * self.robot.wheel_radius)
-        #dist_r_delta = (self.enc_r_delta / self.robot.ticks_per_rev) * (
-            #2 * pi * self.robot.wheel_radius)
-
-        ## store encoder values for next step iteration
-        #self.enc_l_prev = self.enc_l
-        #self.enc_r_prev = self.enc_r
 
     def send_command(self, to_send):
         if self.robot_comm.connected:
@@ -973,7 +932,7 @@ class WheelEncoder(Sensor):
         self.real_revs = 0.0
         self.tick_count = 0
 
-    def step_revolutions(self, revolutions):
+    def update_simulated_tick_count(self, revolutions):
         """Update the tick count for this wheel encoder.
 
         Takes a float representing the number of forward revolutions made.
@@ -1042,5 +1001,5 @@ class DifferentialDriveDynamics(object):
         #print("New y: {}").format(new_y)
 
         if not self.robot.physical_robot.robot_comm.connected:
-            wheel_encoders[0].step_revolutions(revolutions_left)
-            wheel_encoders[1].step_revolutions(revolutions_right)
+            wheel_encoders[0].update_simulated_tick_count(revolutions_left)
+            wheel_encoders[1].update_simulated_tick_count(revolutions_right)

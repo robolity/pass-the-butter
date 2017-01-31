@@ -49,10 +49,10 @@ void processSerial(Stream *serial){
         encR = encoders.getCountsAndResetRight();
         break;
       case 'E':
-        //lcd.clear();
-        //lcd.print(enc_l);
-        //lcd.gotoXY(0, 1);
-        //lcd.print(enc_r);
+        lcd.clear();
+        lcd.print(encL);
+        lcd.gotoXY(0, 1);
+        lcd.print(encR);
       
         //left encoder value
         encL = encoders.getCountsLeft();
@@ -131,10 +131,10 @@ void processSerial(Stream *serial){
             char1Received = false;
             //time = micros() - time;
 
-            lcd.clear();
-            lcd.print(velL);
-            lcd.gotoXY(0, 1);
-            lcd.print(velR);
+            //lcd.clear();
+            //lcd.print(velL);
+            //lcd.gotoXY(0, 1);
+            //lcd.print(velR);
           } 
         }
         break;
